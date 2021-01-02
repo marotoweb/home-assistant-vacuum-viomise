@@ -1,4 +1,18 @@
-# Hacky support for STYJ02YM/STYTJ02YM
-This hacky integration adds support for Xiaomi Robot Vacuum-Mop Pro, Viomi V2 Pro and other devices widely known as STYTJ02YM.  
-Repository is forked from https://github.com/nqkdev/home-assistant-vacuum-styj02ym, I've backported changes from other forks, added HACS compatibility and polished it a bit.  
-It works for me and ~20 other people, but due to my limited Python knowledge your milleage may vary.
+# Hacky support for Viomi SE (V-RVCLM21A)
+This hacky integration adds support for Viomi Robot Vacuum Cleaner SE (V-RVCLM21A).  
+Repository is forked from KrzysztofHajdamowicz/home-assistant-vacuum-styj02ym
+
+Due to my lack of knowledge in python some things may not make sense or there is a better way to do them, we just shouldn't be stuc
+
+
+### Install:
+- install it with HACS
+- Add the configuration to configuration.yaml, example:
+
+```yaml
+vacuum:
+  - platform: viomise
+    host: 192.168.68.105
+    token: !secret vacuum
+    name: Mi hihi
+```

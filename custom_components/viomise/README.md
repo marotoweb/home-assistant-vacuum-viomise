@@ -1,4 +1,4 @@
-# Hacky Home assistant support for Viomi SE (V-RVCLM21A)
+# Hacky Home assistant support for Viomi Robot Vacuum Cleaner SE (V-RVCLM21A)
 
 ## This is for Viomi Robot Vacuum Cleaner SE (apparently EU version) with 4.0.9_0012 firmware
 

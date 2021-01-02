@@ -1,0 +1,11 @@
+{
+  "domain": "viomise",
+  "name": "Viomi Robot Vacuum Cleaner SE (V-RVCLM21A)",
+  "documentation": "",
+  "requirements": [
+    "construct==2.9.45",
+    "python-miio==0.5.3"
+  ],
+  "dependencies": [],
+  "codeowners": []
+}

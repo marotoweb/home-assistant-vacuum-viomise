@@ -1,4 +1,4 @@
-"""Support for the Xiaomi vacuum cleaner robot."""
+"""Support for the Viomi vacuum cleaner robot."""
 import asyncio
 from functools import partial
 import logging
@@ -39,8 +39,8 @@ import homeassistant.helpers.config_validation as cv
 
 _LOGGER = logging.getLogger(__name__)
 
-DEFAULT_NAME = "Xiaomi Vacuum cleaner STYJ02YM"
-DATA_KEY = "vacuum.miio2"
+DEFAULT_NAME = "Viomi Robot Vacuum Cleaner SE V-RVCLM21A"
+DATA_KEY = "vacuum.viomise"
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
@@ -110,12 +110,12 @@ SUPPORT_XIAOMI = (
 
 
 STATE_CODE_TO_STATE = {
-    0: STATE_IDLE,
-    1: STATE_IDLE,
-    2: STATE_PAUSED,
-    3: STATE_CLEANING,
-    4: STATE_RETURNING,
-    5: STATE_DOCKED,
+    0: STATE_IDLE,      # Sleep
+    1: STATE_IDLE,      # Idle
+    2: STATE_PAUSED,    # Paused
+    3: STATE_RETURNING, # Go Charging
+    4: STATE_DOCKED,    # Charging
+    5: STATE_CLEANING,  # Vacuum
     6: STATE_CLEANING,  # Vacuum & Mop
     7: STATE_CLEANING   # Mop only
 }
@@ -127,30 +127,15 @@ ALL_PROPS = [
     "battary_life",
     "box_type",
     "mop_type",
-    "s_time",
-    "s_area",
+    #"s_time",
+    #"s_area",
     "suction_grade",
     "water_grade",
     "remember_map",
     "has_map",
     "is_mop",
-    "has_newmap",
-    "hw_info",
-    "sw_info",
-    "start_time",
-    "order_time",
-    "v_state",
-    "zone_data",
-    "repeat_state",
-    "light_state",
-    "is_charge",
-    "is_work"
+    "has_newmap"
 ]
-
-VACUUM_CARD_PROPS_REFERENCES = {
-    'cleaned_area': 's_area',
-    'cleaning_time': 's_time'
-}
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the Xiaomi vacuum cleaner robot platform."""
@@ -299,6 +284,8 @@ class MiroboVacuum2(StateVacuumEntity):
         mode = self.vacuum_state['mode']
         is_mop = self.vacuum_state['is_mop']
         actionMode = 0
+        
+        #Sweep type / mode: 0=Global, 1=Mop, 2=Edge, 3=Area, 4=Point, 5= Control
 
         if mode == 4 and self._last_clean_point is not None:
             method = 'set_pointclean'
@@ -404,25 +391,57 @@ class MiroboVacuum2(StateVacuumEntity):
     def update(self):
         """Fetch state from the device."""
         try:
-            state = self._vacuum.raw_command('get_prop', ALL_PROPS)
+            RUN_STATE = [{"piid":1,"siid":2,"did":"<did>"}] #Status
+            MODE = [{"piid":18,"siid":2,"did":"<did>"}] #Sweep type?
+            ERR_STATE = [{"piid": 2, "siid": 2, "did": "<did>"}] #Device Fault
+            BATTERY_LIFE = [{"piid":1,"siid":3,"did":"<did>"}] #Battery Level
+            BOX_TYPE =  [{"piid":12,"siid":2,"did":"<did>"}] #Door State (Tank Type?)
+            MOP_TYPE =  [{"piid":13,"siid":2,"did":"<did>"}] #Contact State (Mop)?
+            S_TIME = [{"piid":25,"siid":4,"did":"<did>"}] #Cleaning start time, time stamp, unit second (need confirmation)
+            S_AREA = [{"piid":27,"siid":4,"did":"<did>"}] #Total cleaning area, unit m2 (need confirmation)
+            SUCTION_GRADE = [{"piid": 19, "siid": 2, "did": "<did>"}] #Suction power
+            WATER_GRADE = [{"piid":18,"siid":4,"did":"<did>"}] #Water output
+            REMEMBER_MAP = [{"piid":3,"siid":4,"did":"<did>"}] #Memory map switch
+            HAS_MAP = [{"piid":4,"siid":4,"did":"<did>"}] #Is there a memory map
+            IS_MOP = [{"piid":6,"siid":4,"did":"<did>"}] #Mopping/sweeping route?
+            HAS_NEWMAP = [{"piid":5,"siid":4,"did":"<did>"}] #After the cleaning is completed, whether the machine recognizes the new map, if the app pops up to prompt the user whether to overwrite the memory map?
+
+            state = []
+            state.append((self._vacuum.raw_command('get_properties', RUN_STATE)[0])["value"])
+            state.append((self._vacuum.raw_command('get_properties', MODE)[0])["value"])
+            state.append((self._vacuum.raw_command('get_properties', ERR_STATE)[0])["value"])
+            state.append((self._vacuum.raw_command('get_properties', BATTERY_LIFE)[0])["value"])
+            state.append((self._vacuum.raw_command('get_properties', BOX_TYPE)[0])["value"])
+            state.append((self._vacuum.raw_command('get_properties', MOP_TYPE)[0])["value"])
+            #state.append((self._vacuum.raw_command('get_properties', S_TIME)[0])["value"])
+            #state.append((self._vacuum.raw_command('get_properties', S_AREA)[0])["value"])
+            state.append((self._vacuum.raw_command('get_properties', SUCTION_GRADE)[0])["value"])
+            state.append((self._vacuum.raw_command('get_properties', WATER_GRADE)[0])["value"])
+            state.append((self._vacuum.raw_command('get_properties', REMEMBER_MAP)[0])["value"])
+            state.append((self._vacuum.raw_command('get_properties', HAS_MAP)[0])["value"])
+            state.append((self._vacuum.raw_command('get_properties', IS_MOP)[0])["value"])
+            state.append((self._vacuum.raw_command('get_properties', HAS_NEWMAP)[0])["value"])
 
             self.vacuum_state = dict(zip(ALL_PROPS, state))
-
-            for prop in VACUUM_CARD_PROPS_REFERENCES.keys():
-                self.vacuum_state[prop] = self.vacuum_state[VACUUM_CARD_PROPS_REFERENCES[prop]]
 
             self._available = True
 
             # Automatically set mop based on box_type
-            is_mop = int(self.vacuum_state['is_mop'])
+            # For ViomiSE
+            # mop_type: 0=NoMop 1=MopAttached
+            # box_type: 0=NoBox, 1=DustBox, 2=WhaterBox, 3=2in1Box
+
+            mop_type = int(self.vacuum_state['mop_type'])
             box_type = int(self.vacuum_state['box_type'])
 
             update_mop = None
-            if box_type == 2 and is_mop != 2:
+            if box_type == 2 and mop_type != 0:
                 update_mop = 2
-            elif box_type == 3 and is_mop != 1:
+            elif box_type == 3 and mop_type != 1:
+                update_mop = 0
+            elif box_type == 3 and mop_type != 0:
                 update_mop = 1
-            elif box_type == 1 and is_mop != 0:
+            elif box_type == 1:
                 update_mop = 0
 
             if update_mop is not None:

@@ -1,10 +1,10 @@
 
 {
-    "name": "vacuum-styj02ym",
-    "country": ["FR", "PL"],
+    "name": "Viomi Robot Vacuum Cleaner SE (V-RVCLM21A)",
+    "country": ["FR", "PL", "PT"],
     "domains": ["vacuum"],
     "homeassistant": "0.109.0",
     "iot_class": "local_poll",
     "zip_release": true,
-    "filename": "miio2.zip"
+    "filename": "viomi_se.zip"
 }
