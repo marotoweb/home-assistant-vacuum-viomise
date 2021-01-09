@@ -127,8 +127,8 @@ ALL_PROPS = [
     "battary_life",
     "box_type",
     "mop_type",
-    #"s_time",
-    #"s_area",
+    "s_time",
+    "s_area",
     "suction_grade",
     "water_grade",
     "remember_map",
@@ -396,14 +396,14 @@ class MiroboVacuum2(StateVacuumEntity):
             ERR_STATE = [{"piid": 2, "siid": 2, "did": "<did>"}] #Device Fault
             BATTERY_LIFE = [{"piid":1,"siid":3,"did":"<did>"}] #Battery Level
             BOX_TYPE =  [{"piid":12,"siid":2,"did":"<did>"}] #Door State (Tank Type?)
-            MOP_TYPE =  [{"piid":13,"siid":2,"did":"<did>"}] #Contact State (Mop)?
-            S_TIME = [{"piid":25,"siid":4,"did":"<did>"}] #Cleaning start time, time stamp, unit second (need confirmation)
-            S_AREA = [{"piid":27,"siid":4,"did":"<did>"}] #Total cleaning area, unit m2 (need confirmation)
+            MOP_TYPE =  [{"piid":13,"siid":2,"did":"<did>"}] #Contact State (Mop attached)
+            S_TIME = [{"piid":15,"siid":2,"did":"<did>"}] #Last operation time in minutes
+            S_AREA = [{"piid":16,"siid":2,"did":"<did>"}] #Last cleaning area in m2
             SUCTION_GRADE = [{"piid": 19, "siid": 2, "did": "<did>"}] #Suction power
             WATER_GRADE = [{"piid":18,"siid":4,"did":"<did>"}] #Water output
             REMEMBER_MAP = [{"piid":3,"siid":4,"did":"<did>"}] #Memory map switch
             HAS_MAP = [{"piid":4,"siid":4,"did":"<did>"}] #Is there a memory map
-            IS_MOP = [{"piid":6,"siid":4,"did":"<did>"}] #Mopping/sweeping route?
+            IS_MOP = [{"piid":11,"siid":2,"did":"<did>"}] #Wide Dynamic Range Mode (0=Vacuum 1=Vacuum&Mop 2=Mop)
             HAS_NEWMAP = [{"piid":5,"siid":4,"did":"<did>"}] #After the cleaning is completed, whether the machine recognizes the new map, if the app pops up to prompt the user whether to overwrite the memory map?
 
             state = []
