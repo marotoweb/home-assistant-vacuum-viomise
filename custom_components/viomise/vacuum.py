@@ -413,8 +413,8 @@ class MiroboVacuum2(StateVacuumEntity):
             state.append((self._vacuum.raw_command('get_properties', BATTERY_LIFE)[0])["value"])
             state.append((self._vacuum.raw_command('get_properties', BOX_TYPE)[0])["value"])
             state.append((self._vacuum.raw_command('get_properties', MOP_TYPE)[0])["value"])
-            #state.append((self._vacuum.raw_command('get_properties', S_TIME)[0])["value"])
-            #state.append((self._vacuum.raw_command('get_properties', S_AREA)[0])["value"])
+            state.append((self._vacuum.raw_command('get_properties', S_TIME)[0])["value"])
+            state.append((self._vacuum.raw_command('get_properties', S_AREA)[0])["value"])
             state.append((self._vacuum.raw_command('get_properties', SUCTION_GRADE)[0])["value"])
             state.append((self._vacuum.raw_command('get_properties', WATER_GRADE)[0])["value"])
             state.append((self._vacuum.raw_command('get_properties', REMEMBER_MAP)[0])["value"])
@@ -428,23 +428,26 @@ class MiroboVacuum2(StateVacuumEntity):
 
             # Automatically set mop based on box_type
             # For ViomiSE
-            # mop_type: 0=NoMop 1=MopAttached
+            # mop_type: 0=NoMop, 1=MopAttached
             # box_type: 0=NoBox, 1=DustBox, 2=WhaterBox, 3=2in1Box
+            # is_mop: 0=Vacuum, 1=Vacuum&Mop, 2=Mop
 
-            mop_type = int(self.vacuum_state['mop_type'])
+            mop_type = bool(self.vacuum_state['mop_type'])
             box_type = int(self.vacuum_state['box_type'])
+            is_mop = int(self.vacuum_state['is_mop'])
+            run_state = int(self.vacuum_state['run_state'])
 
             update_mop = None
-            if box_type == 2 and mop_type != 0:
-                update_mop = 2
-            elif box_type == 3 and mop_type != 1:
-                update_mop = 0
-            elif box_type == 3 and mop_type != 0:
-                update_mop = 1
+            if box_type == 2 and mop_type:
+                update_mop = 2 #Mop only
+            elif box_type == 3 and not mop_type:
+                update_mop = 0 #Vacuum
+            elif box_type == 3 and mop_type and is_mop != 2:
+                update_mop = 1 #Vacum&Mop
             elif box_type == 1:
-                update_mop = 0
+                update_mop = 0 #Vacuum only
 
-            if update_mop is not None:
+            if update_mop is not None and run_state == 4:
                 self._vacuum.raw_command('set_mop', [update_mop])
                 self.update()
         except OSError as exc:
