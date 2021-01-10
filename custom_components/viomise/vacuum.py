@@ -437,19 +437,20 @@ class MiroboVacuum2(StateVacuumEntity):
             is_mop = int(self.vacuum_state['is_mop'])
             run_state = int(self.vacuum_state['run_state'])
 
-            update_mop = None
-            if box_type == 2 and mop_type:
-                update_mop = 2 #Mop only
-            elif box_type == 3 and not mop_type:
-                update_mop = 0 #Vacuum
-            elif box_type == 3 and mop_type and is_mop != 2:
-                update_mop = 1 #Vacum&Mop
-            elif box_type == 1:
-                update_mop = 0 #Vacuum only
+            if run_state == 4:
+                update_mop = None
+                if box_type == 2 and mop_type:
+                    update_mop = 2 #Mop only
+                elif box_type == 3 and not mop_type:
+                    update_mop = 0 #Vacuum
+                elif box_type == 3 and mop_type and is_mop != 2:
+                    update_mop = 1 #Vacum&Mop
+                elif box_type == 1:
+                    update_mop = 0 #Vacuum only
 
-            if update_mop is not None and run_state == 4:
-                self._vacuum.raw_command('set_mop', [update_mop])
-                self.update()
+                if update_mop is not None and update_mop != is_mop:
+                    self._vacuum.raw_command('set_mop', [update_mop])
+                    self.update()
         except OSError as exc:
             _LOGGER.error("Got OSError while fetching the state: %s", exc)
         except DeviceException as exc:
