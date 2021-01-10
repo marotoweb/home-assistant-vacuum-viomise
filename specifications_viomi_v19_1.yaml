@@ -1,0 +1,1348 @@
+---
+type: urn:miot-spec-v2:device:vacuum:0000A006:viomi-v19:1
+description: Robot Cleaner
+services:
+  - iid: 1 #Device Information
+    type: urn:miot-spec-v2:service:device-information:00007801:viomi-v19:1
+    description: Device Information
+    properties:
+      - iid: 1 #Device Manufacturer
+        type: urn:miot-spec-v2:property:manufacturer:00000001:viomi-v19:1
+        description: Device Manufacturer
+        format: string
+        access:
+          - read
+      - iid: 2 #Device Model
+        type: urn:miot-spec-v2:property:model:00000002:viomi-v19:1
+        description: Device Model
+        format: string
+        access:
+          - read
+      - iid: 3 #Device Serial Number
+        type: urn:miot-spec-v2:property:serial-number:00000003:viomi-v19:1
+        description: Device Serial Number
+        format: string
+        access:
+          - read
+      - iid: 4 #Current Firmware Version
+        type: urn:miot-spec-v2:property:firmware-revision:00000005:viomi-v19:1
+        description: Current Firmware Version
+        format: string
+        access:
+          - read
+  - iid: 2 #Robot Cleaner
+    type: urn:miot-spec-v2:service:vacuum:00007810:viomi-v19:1
+    description: Robot Cleaner
+    properties:
+      - iid: 1 #Status
+        type: urn:miot-spec-v2:property:status:00000007:viomi-v19:1
+        description: Status
+        format: uint8
+        access:
+          - read
+          - notify
+        unit: none
+        value-list:
+          - value: 0
+            description: Sleep
+          - value: 1
+            description: Idle
+          - value: 2
+            description: Paused
+          - value: 3
+            description: Go Charging
+          - value: 4
+            description: Charging
+          - value: 5
+            description: Sweeping
+          - value: 6
+            description: Sweeping And Mopping
+          - value: 7
+            description: Mopping
+      - iid: 2 #Device Fault
+        type: urn:miot-spec-v2:property:fault:00000009:viomi-v19:1
+        description: Device Fault
+        format: uint32
+        access:
+          - read
+          - notify
+        unit: none
+        value-range:
+          - 0
+          - 3000
+          - 1
+      - iid: 11 #Wide Dynamic Range Mode
+        type: urn:miot-spec-v2:property:wdr-mode:00000088:viomi-v19:1
+        description: Wide Dynamic Range Mode
+        format: uint8
+        access:
+          - read
+          - write
+          - notify
+        unit: none
+        value-list:
+          - value: 0
+            description: "0" #Vacuum
+          - value: 1
+            description: "1" #Vacuum&Mop
+          - value: 2
+            description: "2" #Mop
+      - iid: 12 #Door State (Tank Type)
+        type: urn:miot-spec-v2:property:door-state:0000006B:viomi-v19:1
+        description: Door State
+        format: uint8
+        access:
+          - read
+          - notify
+        unit: none
+        value-list:
+          - value: 0
+            description: "0" #No Box
+          - value: 1
+            description: "1" #Dust Box
+          - value: 2
+            description: "2" #Whater Box
+          - value: 3
+            description: "3" #2in1 Box
+      - iid: 13 #Contact State (Mop)
+        type: urn:miot-spec-v2:property:contact-state:0000007C:viomi-v19:1
+        description: Contact State
+        format: uint8
+        access:
+          - read
+          - notify
+        unit: none
+        value-list:
+          - value: 0
+            description: "0" #No mop
+          - value: 1
+            description: "1" #Mop Attached
+      - iid: 14 #Stream URL
+        type: urn:miot-spec-v2:property:stream-address:0000005E:viomi-v19:1
+        description: Stream URL
+        format: string
+        access: []
+        unit: none
+      - iid: 15 #Contact State - Last operation time (minutes)
+        type: urn:miot-spec-v2:property:contact-state:0000007C:viomi-v19:1
+        description: Contact State
+        format: uint8
+        access:
+          - read
+          - notify
+        unit: minutes
+        value-range:
+          - 0
+          - 120
+          - 1
+      - iid: 16 #Contact State - Last operation area (m2)
+        type: urn:miot-spec-v2:property:contact-state:0000007C:viomi-v19:1
+        description: Contact State
+        format: uint16
+        access:
+          - read
+          - notify
+        unit: none
+        value-range:
+          - 0
+          - 1200
+          - 1
+      - iid: 17 #Mute
+        type: urn:miot-spec-v2:property:mute:00000040:viomi-v19:1
+        description: Mute
+        format: uint8
+        access:
+          - read
+          - write
+          - notify
+        unit: none
+        value-range:
+          - 0 #Mute / Voice switch in app
+          - 10 #Max volume
+          - 1 #Min volume
+      - iid: 4 #Sweep Type
+        type: urn:miot-spec-v2:property:sweep-type:000000D3:viomi-v19:1
+        description: Sweep Type
+        format: uint8
+        access:
+          - read
+          - write
+          - notify
+        unit: none
+        value-list:
+          - value: 0
+            description: Global
+          - value: 1
+            description: Mop
+          - value: 2
+            description: Edge
+          - value: 3
+            description: Area
+          - value: 4
+            description: Point
+          - value: 5
+            description: Control
+      - iid: 19 #Mode / Fan speed
+        type: urn:miot-spec-v2:property:mode:00000008:viomi-v19:1
+        description: Mode
+        format: uint8
+        access:
+          - read
+          - write
+          - notify
+        unit: none
+        value-list:
+          - value: 0
+            description: Silent
+          - value: 1
+            description: Basic
+          - value: 2
+            description: Medium
+          - value: 3
+            description: Strong
+    actions:
+      - iid: 1 #Start Sweep
+        type: urn:miot-spec-v2:action:start-sweep:00002804:viomi-v19:1
+        description: Start Sweep
+        in: []
+        out: []
+      - iid: 2 #Stop Sweeping
+        type: urn:miot-spec-v2:action:stop-sweeping:00002805:viomi-v19:1
+        description: Stop Sweeping
+        in: []
+        out: []
+      - iid: 3 #Pause
+        type: urn:miot-spec-v2:action:pause:0000280C:viomi-v19:1
+        description: Pause
+        in: []
+        out: []
+      - iid: 4 #Start Charge
+        type: urn:miot-spec-v2:action:start-charge:00002802:viomi-v19:1
+        description: Start Charge
+        in: []
+        out: []
+      - iid: 5 #Stop Massage
+        type: urn:miot-spec-v2:action:stop-massage:0000281F:viomi-v19:1
+        description: Stop Massage
+        in: []
+        out: []
+      - iid: 6 #Start Mop
+        type: urn:miot-spec-v2:action:start-mop:00002834:viomi-v19:1
+        description: Start Mop
+        in: []
+        out: []
+      - iid: 7 #Start Only Sweep
+        type: urn:miot-spec-v2:action:start-only-sweep:0000283A:viomi-v19:1
+        description: Start Only Sweep
+        in: []
+        out: []
+      - iid: 8 #Start Sweep Mop
+        type: urn:miot-spec-v2:action:start-sweep-mop:00002835:viomi-v19:1
+        description: Start Sweep Mop
+        in: []
+        out: []
+    events:
+      - iid: 2 #Exception Occurred
+        type: urn:miot-spec-v2:event:exception-occurred:00005011:viomi-v19:1
+        description: Exception Occurred
+        arguments:
+          - 2
+  - iid: 3 #Baterry
+    type: urn:miot-spec-v2:service:battery:00007805:viomi-v19:1
+    description: Battery
+    properties:
+      - iid: 1 #Battery Level
+        type: urn:miot-spec-v2:property:battery-level:00000014:viomi-v19:1
+        description: Battery Level
+        format: uint8
+        access:
+          - read
+          - notify
+        unit: percentage
+        value-range:
+          - 0
+          - 100
+          - 1
+  - iid: 4 #Sweeper
+    type: urn:viomi-spec:service:viomi-vacuum:00007801:viomi-v19:1
+    description: 扫地机
+    properties:
+      - iid: 1 #Secondary cleaning switch
+        type: urn:viomi-spec:property:repeat-state:00000001:viomi-v19:1
+        description: 二次清扫开关
+        format: uint8
+        access:
+          - read
+          - write
+          - notify
+        unit: none
+        value-list:
+          - value: 0
+            description: ""
+          - value: 1
+            description: ""
+      - iid: 3 #Memory map switch
+        type: urn:viomi-spec:property:remember-state:00000003:viomi-v19:1
+        description: 记忆地图开关
+        format: uint8
+        access:
+          - write
+          - notify
+          - read
+        unit: none
+        value-list:
+          - value: 0
+            description: ""
+          - value: 1
+            description: ""
+      - iid: 4 #Is there a memory map
+        type: urn:viomi-spec:property:has-map:00000004:viomi-v19:1
+        description: 是否有记忆地图
+        format: uint8
+        access:
+          - read
+          - notify
+          - write
+        unit: none
+        value-list:
+          - value: 0
+            description: ""
+          - value: 1
+            description: ""
+      - iid: 5 #After the cleaning is completed, whether the machine recognizes the new map, if the app pops up to prompt the user whether to overwrite the memory map
+        type: urn:viomi-spec:property:has-newmap:00000005:viomi-v19:1
+        description: 清扫完成后，机器是否识别到新的地图，若是app弹框提示用户是否覆盖记忆地图
+        format: uint8
+        access:
+          - read
+          - notify
+          - write
+        value-list:
+          - value: 0
+            description: ""
+          - value: 1
+            description: ""
+      - iid: 6 #Mopping/sweeping route (0=S or Y=1)
+        type: urn:viomi-spec:property:mop-route:00000006:viomi-v19:1
+        description: 拖地/扫拖路线
+        format: uint8
+        access:
+          - read
+          - notify
+          - write
+        unit: none
+        value-list:
+          - value: 0
+            description: ""
+          - value: 1
+            description: ""
+      - iid: 8 #Side brush remaining life percentage
+        type: urn:viomi-spec:property:side-brush-life:00000008:viomi-v19:1
+        description: 边刷剩余寿命百分比
+        format: uint8
+        access:
+          - read
+          - notify
+        unit: percentage
+        value-range:
+          - 0
+          - 100
+          - 1
+      - iid: 9 #Side brush remaining life hours
+        type: urn:viomi-spec:property:side-brush-hours:00000009:viomi-v19:1
+        description: 边刷剩余寿命小时
+        format: uint8
+        access:
+          - read
+          - notify
+        unit: hours
+        value-range:
+          - 0
+          - 180
+          - 1
+      - iid: 10 #Percentage of main brush remaining life
+        type: urn:viomi-spec:property:main-brush-life:0000000a:viomi-v19:1
+        description: 主刷剩余寿命百分比
+        format: uint8
+        access:
+          - read
+          - notify
+        unit: percentage
+        value-range:
+          - 0
+          - 100
+          - 1
+      - iid: 11 #Main brush remaining life hours
+        type: urn:viomi-spec:property:main-brush-hours:0000000b:viomi-v19:1
+        description: 主刷剩余寿命小时
+        format: uint16
+        access:
+          - read
+          - notify
+        unit: hours
+        value-range:
+          - 0
+          - 360
+          - 1
+      - iid: 12 #Percentage remaining life of Hypa
+        type: urn:viomi-spec:property:hypa-life:0000000c:viomi-v19:1
+        description: 海帕剩余寿命百分比
+        format: uint8
+        access:
+          - read
+          - notify
+        unit: percentage
+        value-range:
+          - 0
+          - 100
+          - 1
+      - iid: 13 #Hypa remaining life hours
+        type: urn:viomi-spec:property:hypa-hours:0000000d:viomi-v19:1
+        description: 海帕剩余寿命小时
+        format: uint8
+        access:
+          - read
+          - notify
+        unit: hours
+        value-range:
+          - 0
+          - 180
+          - 1
+      - iid: 14 #Mop remaining life percentage
+        type: urn:viomi-spec:property:mop-life:0000000e:viomi-v19:1
+        description: 拖布剩余寿命百分比
+        format: uint8
+        access:
+          - read
+          - notify
+        unit: percentage
+        value-range:
+          - 0
+          - 100
+          - 1
+      - iid: 15 #Mop remaining life hours
+        type: urn:viomi-spec:property:mop-hours:0000000f:viomi-v19:1
+        description: 拖布剩余寿命小时
+        format: uint8
+        access:
+          - read
+          - notify
+        unit: hours
+        value-range:
+          - 0
+          - 180
+          - 1
+      - iid: 16 #Remote control method parameters
+        type: urn:viomi-spec:property:direction:00000010:viomi-v19:1
+        description: 遥控器方法参数
+        format: uint8
+        access:
+          - write
+        unit: none
+        value-list:
+          - value: 1
+            description: ""
+          - value: 2
+            description: ""
+          - value: 3
+            description: ""
+          - value: 4
+            description: ""
+          - value: 5
+            description: ""
+          - value: 10
+            description: ""
+      - iid: 17 #Suction power
+        type: urn:viomi-spec:property:suction-grade:00000011:viomi-v19:1
+        description: 吸力大小
+        format: uint8
+        access:
+          - write
+          - read
+          - notify
+        unit: none
+        value-list:
+          - value: 0
+            description: "" #Quiet
+          - value: 1
+            description: "" #Standard
+          - value: 2
+            description: "" #Medium
+          - value: 3
+            description: "" #Turbo
+      - iid: 18 #Water output size
+        type: urn:viomi-spec:property:water-grade:00000012:viomi-v19:1
+        description: 出水量大小
+        format: uint8
+        access:
+          - read
+          - notify
+          - write
+        unit: none
+        value-list:
+          - value: 0
+            description: 1挡 #Level 1
+          - value: 1
+            description: 2挡 #Level 2
+          - value: 2
+            description: 3挡 # Level 3
+      - iid: 19 #Reset consumable method parameters
+        type: urn:viomi-spec:property:consumable-index:00000007:viomi-v19:1
+        description: 重置耗材方法参数
+        format: uint8
+        access:
+          - write
+          - read
+          - notify
+        unit: none
+        value-list:
+          - value: 0
+            description: ""
+          - value: 1
+            description: ""
+          - value: 2
+            description: ""
+          - value: 3
+            description: ""
+      - iid: 20 #When selecting a room to clean, the passed room id string parameters, separated by commas, such as: ‘10,11,12,13’, if it’s empty, it means global cleaning
+        type: urn:viomi-spec:property:clean-room-ids:00000002:viomi-v19:1
+        description: 选房间清扫时，传的房间id字符串参数，逗号分割，如：‘10,11,12,13’，若传空则是全局清扫
+        format: string
+        access:
+          - write
+          - read
+          - notify
+        unit: none
+      - iid: 21 #Choose room cleaning mode
+        type: urn:viomi-spec:property:clean-room-mode:00000013:viomi-v19:1
+        description: 选房间清扫模式
+        format: uint8
+        access:
+          - read
+          - notify
+          - write
+        unit: none
+        value-list:
+          - value: 0
+            description: ""
+          - value: 1
+            description: ""
+      - iid: 22 #Choose room cleaning operation
+        type: urn:viomi-spec:property:clean-room-oper:00000014:viomi-v19:1
+        description: 选房间清扫操作
+        format: uint8
+        access:
+          - read
+          - notify
+          - write
+        unit: none
+        value-list:
+          - value: 0
+            description: ""
+          - value: 1
+            description: ""
+          - value: 2
+            description: ""
+          - value: 3
+            description: ""
+      - iid: 23 #The number of maps currently stored
+        type: urn:viomi-spec:property:map-num:00000015:viomi-v19:1
+        description: 当前储存的地图数量
+        format: uint8
+        access:
+          - read
+          - notify
+        unit: none
+        value-range:
+          - 0
+          - 5
+          - 1
+      - iid: 24 #Device time zone attributes
+        type: urn:viomi-spec:property:time-zone:00000016:viomi-v19:1
+        description: 设备时区属性
+        format: int32
+        access:
+          - read
+          - notify
+          - write
+        unit: none
+        value-range:
+          - -99999
+          - 99999
+          - 1
+      - iid: 25 #Cleaning start time, time stamp, unit second
+        type: urn:viomi-spec:property:clean-start-time:00000017:viomi-v19:1
+        description: 清扫开始时间，时间戳，单位秒
+        format: int64
+        access:
+          - read
+          - notify
+        unit: seconds
+        value-range:
+          - 0
+          - 9999999999
+          - 1
+      - iid: 26 #Cleaning time, unit second
+        type: urn:viomi-spec:property:clean-use-time:00000018:viomi-v19:1
+        description: 清扫使用时间，单位秒
+        format: uint32
+        access:
+          - read
+          - notify
+        unit: seconds
+        value-range:
+          - 0
+          - 99999
+          - 1
+      - iid: 27 #Total cleaning area, unit m2
+        type: urn:viomi-spec:property:clean-area:00000019:viomi-v19:1
+        description: 清扫总面积，单位m2
+        format: uint32
+        access:
+          - read
+          - notify
+        unit: none
+        value-range:
+          - 0
+          - 9999
+          - 1
+      - iid: 28 #Clean map url
+        type: urn:viomi-spec:property:clean-map-url:0000001a:viomi-v19:1
+        description: 清扫地图url
+        format: string
+        access:
+          - read
+          - notify
+        unit: none
+      - iid: 29 #Cleaning mode
+        type: urn:viomi-spec:property:clean-mode:0000001b:viomi-v19:1
+        description: 清扫模式
+        format: uint8
+        access:
+          - read
+          - notify
+        unit: none
+        value-list:
+          - value: 0
+            description: 全局 #Global
+          - value: 1
+            description: 拖地 #Mop
+          - value: 2
+            description: 沿边 #Along the edge
+          - value: 3
+            description: 区域 #Area
+          - value: 4
+            description: 定点 #Fixed point
+      - iid: 30 #Cleaning method
+        type: urn:viomi-spec:property:clean-way:0000001c:viomi-v19:1
+        description: 清扫方式
+        format: uint8
+        access:
+          - read
+          - notify
+        unit: none
+        value-list:
+          - value: 0
+            description: ""
+          - value: 1
+            description: ""
+          - value: 2
+            description: ""
+      - iid: 31 #Device current language de en ru zh
+        type: urn:viomi-spec:property:cur-lang:0000001d:viomi-v19:1
+        description: "设备当前语言de en ru zh "
+        format: string
+        access:
+          - read
+          - notify
+          - write
+        unit: none
+      - iid: 32 #Current map id
+        type: urn:viomi-spec:property:cur-map-id:0000001e:viomi-v19:1
+        description: 当前地图id
+        format: uint32
+        access:
+          - read
+          - notify
+        unit: none
+        value-range:
+          - 0
+          - 2147483647
+          - 1
+    actions:
+      - iid: 7 #Reset map
+        type: urn:viomi-spec:action:reset-map:00002807:viomi-v19:1
+        description: 重置地图
+        in: []
+        out: []
+      - iid: 10 #Calibration
+        type: urn:viomi-spec:action:set-calibration:0000280a:viomi-v19:1
+        description: 标定
+        in: []
+        out: []
+      - iid: 11 #Reset the usage time of specified consumables
+        type: urn:viomi-spec:action:reset-consumable:0000280b:viomi-v19:1
+        description: 重置指定耗材的使用时间
+        in:
+          - 19
+        out: []
+      - iid: 13 #Choose room cleaning
+        type: urn:viomi-spec:action:set-room-clean:00002804:viomi-v19:1
+        description: 选房间清扫
+        in:
+          - 21
+          - 22
+          - 20
+        out: []
+      - iid: 14 #Creare new map
+        type: urn:viomi-spec:action:create-new-map:00002801:viomi-v19:1
+        description: create-new-map
+        in: []
+        out: []
+    events:
+      - iid: 1 #Mop removal prompt. When the device starts to charge, the mop is not removed to trigger
+        type: urn:viomi-spec:event:mop-remind:00005001:viomi-v19:1
+        description: 拖布取下提示。当设备开始充电时，拖布未取下触发
+        arguments: []
+      - iid: 2 #Standby time exceeds 6 hours, push and automatically shut down
+        type: urn:viomi-spec:event:wait-remind:00005002:viomi-v19:1
+        description: 待机时间超过6小时，推送并自动关机
+        arguments: []
+      - iid: 3 #If the standby time is too long and the power is less than 15%, push and automatically shut down
+        type: urn:viomi-spec:event:low-remind:00005003:viomi-v19:1
+        description: 待机时间过长且电量低于15%，推送并自动关机
+        arguments: []
+      - iid: 4 #Report after cleaning
+        type: urn:viomi-spec:event:clean-end:00005004:viomi-v19:1
+        description: 清扫结束上报
+        arguments:
+          - 25
+          - 26
+          - 27
+          - 28
+          - 29
+          - 30
+  - iid: 5 #Appointment, do not disturb related
+    type: urn:viomi-spec:service:order:00007802:viomi-v19:1
+    description: 预约、勿扰相关
+    properties:
+      - iid: 1 #Appointment id
+        type: urn:viomi-spec:property:order-id:00000001:viomi-v19:1
+        description: 预约id
+        format: uint8
+        access:
+          - write
+        unit: none
+        value-range:
+          - 0
+          - 100
+          - 1
+      - iid: 2 #Whether to open the appointment
+        type: urn:viomi-spec:property:enable:00000002:viomi-v19:1
+        description: 是否开启该条预约
+        format: uint8
+        access:
+          - write
+        unit: none
+        value-list:
+          - value: 0
+            description: ""
+          - value: 1
+            description: ""
+      - iid: 3 #After converted to binary, each bit represents one day, 1-reservation 0-no reservation, bit0-bit6 Sunday-Saturday
+        type: urn:viomi-spec:property:day:00000003:viomi-v19:1
+        description: 转换成二进制后，每一位代表一天，1 - 预约 0 - 无预约，bit0-bit6 星期日-星期六
+        format: uint16
+        access:
+          - write
+        unit: none
+        value-range:
+          - 0
+          - 256
+          - 1
+      - iid: 4 #Appointment hours (24-hour system)
+        type: urn:viomi-spec:property:hour:00000004:viomi-v19:1
+        description: 预约小时（24小时制）
+        format: uint8
+        access:
+          - write
+        unit: none
+        value-range:
+          - 0
+          - 23
+          - 1
+      - iid: 5 #Appointment minutes
+        type: urn:viomi-spec:property:minute:00000005:viomi-v19:1
+        description: 预约分钟
+        format: uint8
+        access:
+          - write
+        unit: none
+        value-range:
+          - 0
+          - 59
+          - 1
+      - iid: 6 #Is it redundant
+        type: urn:viomi-spec:property:repeat:00000006:viomi-v19:1
+        description: 是否重复
+        format: uint8
+        access:
+          - write
+        unit: none
+        value-list:
+          - value: 0
+            description: ""
+          - value: 1
+            description: ""
+      - iid: 8 #Schedule cleaning method
+        type: urn:viomi-spec:property:clean-way:00000008:viomi-v19:1
+        description: 预约清扫方式
+        format: uint8
+        access:
+          - write
+        unit: none
+        value-list:
+          - value: 0
+            description: ""
+          - value: 1
+            description: ""
+          - value: 2
+            description: ""
+      - iid: 9 #Appointment suction
+        type: urn:viomi-spec:property:suction:00000007:viomi-v19:1
+        description: 预约吸力大小
+        format: uint8
+        access:
+          - write
+        unit: none
+        value-list:
+          - value: 0
+            description: ""
+          - value: 1
+            description: ""
+          - value: 2
+            description: ""
+          - value: 3
+            description: ""
+      - iid: 10 #Make an appointment
+        type: urn:viomi-spec:property:water:00000009:viomi-v19:1
+        description: 预约出水量大小
+        format: uint8
+        access:
+          - write
+        unit: none
+        value-list:
+          - value: 0
+            description: ""
+          - value: 1
+            description: ""
+          - value: 2
+            description: ""
+      - iid: 11 #Whether to clean twice
+        type: urn:viomi-spec:property:twice-clean:0000000a:viomi-v19:1
+        description: 是否二次清扫
+        format: uint8
+        access:
+          - write
+        unit: none
+        value-list:
+          - value: 0
+            description: ""
+          - value: 1
+            description: ""
+      - iid: 12 #The reserved map id, if there is no map, pass 0
+        type: urn:viomi-spec:property:mapid:0000000b:viomi-v19:1
+        description: 预约的地图id，若没地图则传0
+        format: uint32
+        access:
+          - write
+        unit: none
+        value-range:
+          - 0
+          - 99999999
+          - 1
+      - iid: 13 #Number of rooms reserved
+        type: urn:viomi-spec:property:room-count:0000000c:viomi-v19:1
+        description: 预约的房间数量
+        format: uint8
+        access:
+          - write
+        unit: none
+        value-range:
+          - 0
+          - 64
+          - 1
+      - iid: 14 #Room reservation data JSON string [{name:''Room 1'', id: 10}, {name:''Room 2', id: 11}, {...}, {...}. ..]
+        type: urn:viomi-spec:property:room-data:0000000d:viomi-v19:1
+        description: 预约的房间数据JSON字符串[{name:'房间1',id:10},{name:'房间2‘,id:11},{...},{...}...]
+        format: string
+        access:
+          - write
+        unit: none
+      - iid: 15 #Do not disturb
+        type: urn:viomi-spec:property:dnd-enable:0000000e:viomi-v19:1
+        description: " 勿扰是否打开"
+        format: uint8
+        access:
+          - read
+          - notify
+          - write
+        unit: none
+        value-list:
+          - value: 0
+            description: ""
+          - value: 1
+            description: ""
+      - iid: 16 #Do not disturb start hour
+        type: urn:viomi-spec:property:dnd-start-hour:0000000f:viomi-v19:1
+        description: 勿扰开始小时
+        format: uint8
+        access:
+          - write
+          - read
+          - notify
+        unit: hours
+        value-range:
+          - 0
+          - 23
+          - 1
+      - iid: 17 #Do not disturb start minutes
+        type: urn:viomi-spec:property:dnd-start-minute:00000010:viomi-v19:1
+        description: 勿扰开始分钟
+        format: uint8
+        access:
+          - read
+          - notify
+          - write
+        unit: minutes
+        value-range:
+          - 0
+          - 59
+          - 1
+      - iid: 18 #Do not disturb end hour
+        type: urn:viomi-spec:property:dnd-end-hour:00000011:viomi-v19:1
+        description: 勿扰结束小时
+        format: uint8
+        access:
+          - read
+          - notify
+          - write
+        unit: hours
+        value-range:
+          - 0
+          - 23
+          - 1
+      - iid: 19 #Do not disturb end minutes
+        type: urn:viomi-spec:property:dnd-end-minute:00000012:viomi-v19:1
+        description: 勿扰结束分钟
+        format: uint8
+        access:
+          - read
+          - notify
+          - write
+        unit: minutes
+        value-range:
+          - 0
+          - 59
+          - 1
+      - iid: 20 #Time zone parameter
+        type: urn:viomi-spec:property:dnd-timezone:00000013:viomi-v19:1
+        description: 时区参数
+        format: int32
+        access:
+          - read
+          - notify
+          - write
+        unit: none
+        value-range:
+          - -99999
+          - 99999
+          - 1
+      - iid: 21 #timestamp
+        type: urn:viomi-spec:property:timestamp:00000014:viomi-v19:1
+        description: timestamp
+        format: int64
+        access:
+          - notify
+          - write
+          - read
+        unit: none
+        value-range:
+          - 0
+          - 2147483647
+          - 1
+      - iid: 22 #N groups of reserved data are separated by commas, and the specific data in each group of data is divided by underscore _
+        type: urn:viomi-spec:property:orderdata:00000015:viomi-v19:1
+        description: N组预约数据逗号分割，每组数据内的具体数据用下划线_分割 {order_id}_{order_enable}_{week}_{hour}_{minute}_{repeat}_{mode}_{suction}_{water}_{twice}_{mapid}_{room_size}_{roomid}_{roomname}
+        format: string
+        access:
+          - read
+          - notify
+        unit: none
+    actions:
+      - iid: 2 #Delete a group of appointments
+        type: urn:viomi-spec:action:del:00002802:viomi-v19:1
+        description: 删除一组预约
+        in:
+          - 1
+        out: []
+      - iid: 3 #Get appointment data
+        type: urn:viomi-spec:action:get:00002801:viomi-v19:1
+        description: 获取预约数据
+        in: []
+        out:
+          - 22
+  - iid: 6 #Refer to where to scan the area, virtual wall
+    type: urn:viomi-spec:service:point-zone:00007803:viomi-v19:1
+    description: 指哪扫那 划区 虚拟墙
+    properties:
+      - iid: 1 #Refers to where to scan the target point, separated by XY comma, such as "3.23, 6.89"
+        type: urn:viomi-spec:property:target-point:00000001:viomi-v19:1
+        description: 指哪扫那目标点，XY逗号分割，如’3.23,6.89‘
+        format: string
+        access:
+          - write
+          - read
+          - notify
+        unit: none
+      - iid: 2 #The coordinates of the four vertices of the zone''x1,y1,x2,y2,x3,y3,x4,y4''
+        type: urn:viomi-spec:property:zone-points:00000002:viomi-v19:1
+        description: 划区的四个顶点坐标 'x1,y1,x2,y2,x3,y3,x4,y4'
+        format: string
+        access:
+          - write
+        unit: none
+      - iid: 3 #Virtual wall JSON data such as [2,'2_2_-6.34_-3.6_-8.6_-10.23','3_3_2.33_1.33_4.23_3.44_2.44_6.77_1.22_3.44'], which means that 2 sets of virtual The first group of wall coordinates ID is 2, the type value is 2 for line segment, the coordinates of both ends are (-6.34, -3.6) and (-8.6, -10.23) The second group of id is 3, the type value is 3 for quadrilateral, 4 The points are connected and closed in sequence, the coordinates are (2.33,1.33)(4.23,3.44)(2.44,6.77)(1.22,3.44)
+        type: urn:viomi-spec:property:restrict-points:00000003:viomi-v19:1
+        description: 虚拟墙JSON数据如[2,'2_2_-6.34_-3.6_-8.6_-10.23','3_3_2.33_1.33_4.23_3.44_2.44_6.77_1.22_3.44']，就是设置了2组虚拟墙坐标第1组id是2,类型值是2表示线段，两端坐标为(-6.34,-3.6)和(-8.6,-10.23)第2组id是3,类型值是3表示四边形，4个点按顺序依次相连并闭合，坐标为(2.33,1.33)(4.23,3.44)(2.44,6.77)(1.22,3.44)
+        format: string
+        access:
+          - write
+        unit: none
+      - iid: 4 #Type of pause
+        type: urn:viomi-spec:property:pause-type:00000004:viomi-v19:1
+        description: 暂停类型
+        format: uint8
+        access:
+          - write
+        unit: none
+        value-list:
+          - value: 0
+            description: ""
+          - value: 1
+            description: ""
+    actions:
+      - iid: 1 #Start pointing to where to clean up
+        type: urn:viomi-spec:action:start-point-clean:00002801:viomi-v19:1
+        description: 开始指哪扫那清扫
+        in: []
+        out: []
+      - iid: 2 #Pause means where to sweep that sweep
+        type: urn:viomi-spec:action:pause-point-clean:00002802:viomi-v19:1
+        description: 暂停指哪扫那清扫
+        in:
+          - 4
+        out: []
+      - iid: 5 #Start area cleaning
+        type: urn:viomi-spec:action:start-zone-clean:00002805:viomi-v19:1
+        description: 开始区域清扫
+        in: []
+        out: []
+      - iid: 6 #Pause area cleaning
+        type: urn:viomi-spec:action:pause-zone-clean:00002806:viomi-v19:1
+        description: 暂停区域清扫
+        in:
+          - 4
+        out: []
+  - iid: 7 #Map related
+    type: urn:viomi-spec:service:map:00007804:viomi-v19:1
+    description: 地图相关
+    properties:
+      - iid: 1 #Uploaded map type
+        type: urn:viomi-spec:property:map-type:00000001:viomi-v19:1
+        description: 上传的地图类型
+        format: uint8
+        access:
+          - read
+          - notify
+          - write
+        unit: none
+        value-list:
+          - value: 0
+            description: ""
+          - value: 1
+            description: ""
+          - value: 2
+            description: ""
+      - iid: 2
+        type: urn:viomi-spec:property:map-id:00000002:viomi-v19:1
+        description: map-id
+        format: int64
+        access:
+          - read
+          - notify
+          - write
+        unit: none
+        value-range:
+          - 0
+          - 2147483647
+          - 1
+      - iid: 3 #Operating parameters when a new map is recognized
+        type: urn:viomi-spec:property:new-map-oper:00000003:viomi-v19:1
+        description: 识别到新地图时的操作参数
+        format: uint8
+        access:
+          - write
+        unit: none
+        value-list:
+          - value: 0
+            description: ""
+          - value: 1
+            description: ""
+          - value: 2
+            description: ""
+      - iid: 4 #Map name
+        type: urn:viomi-spec:property:map-name:00000004:viomi-v19:1
+        description: 地图名字
+        format: string
+        access:
+          - read
+          - notify
+          - write
+        unit: none
+      - iid: 5 #Language parameter
+        type: urn:viomi-spec:property:lang:00000005:viomi-v19:1
+        description: 语言参数
+        format: string
+        access:
+          - write
+        unit: none
+      - iid: 6 #The id parameters of the rooms to be merged are separated by commas, such as: ‘10,11,12’ means to merge rooms with room ids 10,11,12;
+        type: urn:viomi-spec:property:arrange-room-ids:00000006:viomi-v19:1
+        description: 要合并的房间id参数，逗号分割，如：‘10,11,12’表示合并房间id为10,11,12的房间；
+        format: string
+        access:
+          - write
+        unit: none
+      - iid: 7 #Target room id
+        type: urn:viomi-spec:property:target-room-id:00000007:viomi-v19:1
+        description: 目标房间id
+        format: uint8
+        access:
+          - write
+        unit: none
+        value-range:
+          - 0
+          - 128
+          - 1
+      - iid: 8 #The coordinates of the two end points of the dividing line, such as: '3.45,6.78|4.56,-3.45'
+        type: urn:viomi-spec:property:split-points:00000008:viomi-v19:1
+        description: 分割线段的两个端点坐标，如：'3.45,6.78|4.56,-3.45'
+        format: string
+        access:
+          - write
+        unit: none
+      - iid: 9 #Room name
+        type: urn:viomi-spec:property:room-name:00000009:viomi-v19:1
+        description: 房间名称
+        format: string
+        access:
+          - write
+        unit: none
+      - iid: 10 #The coordinates of the robot's current cleaning track
+        type: urn:viomi-spec:property:cur-cleaning-path:0000000a:viomi-v19:1
+        description: "机器人当前清扫轨迹坐标 : [3.456,4.555,0.2,1,5.456,4.555,0.233,0,......]"
+        format: string
+        access:
+          - read
+          - notify
+        unit: none
+      - iid: 11 #Map list data[{name:'Map1',id:1585849584,cur: true},{name:'Map2',id:1585849784,cur: false}]
+        type: urn:viomi-spec:property:map-list:0000000b:viomi-v19:1
+        description:
+          "地图列表数据[{name : '地图1',id:1585849584,cur : true},{name : '地图2',id
+          : 1585849784,cur : false}]"
+        format: string
+        access:
+          - read
+          - notify
+        unit: none
+    actions:
+      - iid: 1 #Upload a map of the specified type
+        type: urn:viomi-spec:action:upload-by-maptype:00002801:viomi-v19:1
+        description: 上传指定类型的地图
+        in:
+          - 1
+        out: []
+      - iid: 2 #Upload the map with the specified id
+        type: urn:viomi-spec:action:upload-by-mapid:00002802:viomi-v19:1
+        description: 上传指定id的地图
+        in:
+          - 2
+        out: []
+      - iid: 3 #Set the current map
+        type: urn:viomi-spec:action:set-cur-map:00002803:viomi-v19:1
+        description: 设置当前地图
+        in:
+          - 2
+        out: []
+      - iid: 4 #Action when a new map is recognized
+        type: urn:viomi-spec:action:deal-new-map:00002804:viomi-v19:1
+        description: 识别到新地图时操作
+        in:
+          - 3
+        out: []
+      - iid: 5 #Delete the map with the specified id
+        type: urn:viomi-spec:action:del-map:00002805:viomi-v19:1
+        description: 删除指定id的地图
+        in:
+          - 2
+        out: []
+      - iid: 7 #Rename the map
+        type: urn:viomi-spec:action:rename-map:00002807:viomi-v19:1
+        description: 重命名地图
+        in:
+          - 2
+          - 4
+        out: []
+      - iid: 8 #Merge room
+        type: urn:viomi-spec:action:arrange-room:00002808:viomi-v19:1
+        description: 合并房间
+        in:
+          - 2
+          - 5
+          - 6
+        out: []
+      - iid: 9 #Split room
+        type: urn:viomi-spec:action:split-room:00002809:viomi-v19:1
+        description: 分割房间
+        in:
+          - 2
+          - 5
+          - 7
+          - 8
+        out: []
+      - iid: 10 #Room rename
+        type: urn:viomi-spec:action:rename-room:0000280a:viomi-v19:1
+        description: 房间重命名
+        in:
+          - 2
+          - 7
+          - 9
+        out: []
+      - iid: 11 #Get map list data
+        type: urn:viomi-spec:action:get-map-list:00002806:viomi-v19:1
+        description: 获取地图列表数据
+        in: []
+        out:
+          - 11
+  - iid: 8 #Sound related
+    type: urn:viomi-spec:service:voice:00007805:viomi-v19:1
+    description: 声音相关
+    properties:
+      - iid: 3 #The name of the currently downloaded voice package
+        type: urn:viomi-spec:property:target-voice:00000003:viomi-v19:1
+        description: 当前下载的语音包名字
+        format: string
+        access:
+          - read
+          - notify
+          - write
+        unit: none
+      - iid: 4 #The name of the voice package currently in use
+        type: urn:viomi-spec:property:cur-voice:00000004:viomi-v19:1
+        description: 当前在用的语音包名字
+        format: string
+        access:
+          - read
+          - notify
+          - write
+        unit: none
+      - iid: 5 #Download status
+        type: urn:viomi-spec:property:download-status:00000005:viomi-v19:1
+        description: 下载状态
+        format: uint8
+        access:
+          - read
+          - notify
+          - write
+        unit: none
+        value-list:
+          - value: 0
+            description: ""
+          - value: 1
+            description: ""
+          - value: 2
+            description: ""
+          - value: 12
+            description: ""
+          - value: 13
+            description: ""
+          - value: 14
+            description: ""
+          - value: 15
+            description: ""
+          - value: 16
+            description: ""
+          - value: 17
+            description: ""
+          - value: 18
+            description: ""
+          - value: 19
+            description: ""
+          - value: 20
+            description: ""
+          - value: 21
+            description: ""
+          - value: 22
+            description: ""
+      - iid: 6 #Download progress
+        type: urn:viomi-spec:property:download-progress:00000002:viomi-v19:1
+        description: 下载进度
+        format: uint8
+        access:
+          - read
+          - notify
+          - write
+        unit: percentage
+        value-range:
+          - 0
+          - 100
+          - 1
+      - iid: 7 #Link to the voice pack to download
+        type: urn:viomi-spec:property:voice-url:00000006:viomi-v19:1
+        description: 要下载的语音包链接
+        format: string
+        access:
+          - write
+        unit: none
+      - iid: 8 #Md5 encoding of the voice package to be downloaded
+        type: urn:viomi-spec:property:voice-mdfive:00000007:viomi-v19:1
+        description: 要下载的语音包的md5编码
+        format: string
+        access:
+          - write
+        unit: none
+    actions:
+      - iid: 2 #Looking for a sweeper
+        type: urn:viomi-spec:action:find-device:00002802:viomi-v19:1
+        description: 寻找扫地机
+        in: []
+        out: []
+      - iid: 3 #Start downloading the voice package
+        type: urn:viomi-spec:action:download-voice:00002803:viomi-v19:1
+        description: 开始下载语音包
+        in:
+          - 3
+          - 7
+          - 8
+        out: []
+      - iid: 4 #Get the download status of the voice package file
+        type: urn:viomi-spec:action:get-downloadstatus:00002804:viomi-v19:1
+        description: 获取语音包文件下载状态
+        in: []
+        out:
+          - 6
+          - 3
+          - 4
+          - 5
