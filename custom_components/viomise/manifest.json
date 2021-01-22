@@ -8,5 +8,5 @@
     "python-miio==0.5.3"
   ],
   "dependencies": [],
-  "codeowners": []
+  "codeowners": ["@nqkdev", "@KrzysztofHajdamowicz", "@marotoweb"],
 }
