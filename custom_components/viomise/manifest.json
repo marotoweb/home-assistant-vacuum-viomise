@@ -9,4 +9,5 @@
   ],
   "dependencies": [],
   "codeowners": ["@nqkdev", "@KrzysztofHajdamowicz", "@marotoweb"],
+  "config_flow": false
 }
