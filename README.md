@@ -34,6 +34,15 @@ wget https://raw.githubusercontent.com/marotoweb/home-assistant-vacuum-viomise/m
 wget https://raw.githubusercontent.com/marotoweb/home-assistant-vacuum-viomise/master/custom_components/viomise/manifest.json
 ```
 
+or you can download [*latest release package*](https://github.com/marotoweb/home-assistant-vacuum-viomise/releases/latest/download/viomi_se.zip)
+
+```bash
+mkdir -p custom_components/viomise
+cd custom_components/viomise
+wget https://github.com/marotoweb/home-assistant-vacuum-viomise/releases/latest/download/viomi_se.zip
+unzip viomi_se.zip
+```
+
 ## Configuration
 
 Add the configuration to `configuration.yaml` file, example:
