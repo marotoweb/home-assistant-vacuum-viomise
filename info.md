@@ -5,7 +5,7 @@ Repository is forked from KrzysztofHajdamowicz/home-assistant-vacuum-styj02ym
 
 Due to my lack of knowledge in python some things may not make sense or there is a better way to do them, we just shouldn't be stuck
 
-<img src="http://smart-orange.com/img/brands/20-viomi-logo-icon.svg" width=48%> 
+<img src="https://github.com/home-assistant/brands/raw/master/custom_integrations/viomise/logo.png" width=48%> 
 
 ## Installation
 
