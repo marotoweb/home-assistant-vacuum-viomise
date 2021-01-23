@@ -2,6 +2,8 @@
 
 ## This is for Viomi Robot Vacuum Cleaner SE (apparently EU version) with 4.0.9_0012 firmware
 
+<img src="http://smart-orange.com/img/brands/20-viomi-logo-icon.svg" width=48%> 
+
 ## Installation
 
 ### Using [HACS](https://hacs.xyz/) (recommended)
