@@ -35,6 +35,9 @@ from homeassistant.const import (
     STATE_OFF,
     STATE_ON,
 )
+
+import homeassistant.helpers.device_registry as dr
+
 import homeassistant.helpers.config_validation as cv
 
 _LOGGER = logging.getLogger(__name__)
@@ -196,6 +199,17 @@ class MiroboVacuum2(StateVacuumEntity):
 
     def __init__(self, name, vacuum):
         """Initialize the Xiaomi vacuum cleaner robot handler."""
+        try:
+            self._miio_info = vacuum.info()
+        except DeviceException as exc:
+            _LOGGER.error("Device %s unavailable or token incorrect: %s", name, exc)
+            raise PlatformNotReady from exc
+
+        self._unique_did = dr.format_mac(self._miio_info.mac_address)
+        self._unique_id = self._unique_did
+
+        _LOGGER.info("Device vacuum unique_id: %s", self._unique_id) 
+
         self._name = name
         self._vacuum = vacuum
 
@@ -204,6 +218,9 @@ class MiroboVacuum2(StateVacuumEntity):
         self.vacuum_state = None
         self._available = False
 
+    @property
+    def unique_id(self):
+        return self._unique_id
     @property
     def name(self):
         """Return the name of the device."""
