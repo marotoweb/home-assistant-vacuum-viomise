@@ -220,7 +220,9 @@ class MiroboVacuum2(StateVacuumEntity):
 
     @property
     def unique_id(self):
+        """Return the unique_id of the device."""
         return self._unique_id
+    
     @property
     def name(self):
         """Return the name of the device."""
