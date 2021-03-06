@@ -10,5 +10,5 @@
   "dependencies": [],
   "codeowners": ["@nqkdev", "@KrzysztofHajdamowicz", "@marotoweb"],
   "config_flow": false,
-  "version": "v2.0"
+  "version": "v2021.02.1"
 }
