@@ -10,5 +10,6 @@
   "dependencies": [],
   "codeowners": ["@nqkdev", "@KrzysztofHajdamowicz", "@marotoweb"],
   "config_flow": false,
+  "iot_class": "local_polling",
   "version": "v2021.05.1"
 }
