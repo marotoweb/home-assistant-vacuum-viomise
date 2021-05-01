@@ -54,7 +54,7 @@ vacuum:
   - platform: viomise
     host: 192.168.68.105
     token: !secret vacuum
-    name: Mi hihi
+    name: Viomi SE
 ```
 Vacuum token can be extracted by following [this guide](https://www.home-assistant.io/integrations/xiaomi_miio/#retrieving-the-access-token).
 You also need to enter your Xiaomi Cloud username and password.
