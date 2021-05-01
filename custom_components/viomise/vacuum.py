@@ -137,7 +137,15 @@ ALL_PROPS = [
     "remember_map",
     "has_map",
     "is_mop",
-    "has_newmap"
+    "has_newmap",
+    "main_brush_percentage",
+    "main_brush_left",
+    "side_brush_percentage",
+    "side_brush_left",
+    "filter_percentage",
+    "filter_left",
+    "mop_percentage",
+    "mop_left"
 ]
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
@@ -424,6 +432,15 @@ class MiroboVacuum2(StateVacuumEntity):
             HAS_MAP = [{"piid":4,"siid":4,"did":"<did>"}] #Is there a memory map
             IS_MOP = [{"piid":11,"siid":2,"did":"<did>"}] #Wide Dynamic Range Mode (0=Vacuum 1=Vacuum&Mop 2=Mop)
             HAS_NEWMAP = [{"piid":5,"siid":4,"did":"<did>"}] #After the cleaning is completed, whether the machine recognizes the new map, if the app pops up to prompt the user whether to overwrite the memory map?
+            
+            SIDE_BRUSH_LEFT_PERCENTAGE = [{"piid":8,"siid":4,"did":"<did>"}] #Side brush remaining life percentage
+            SIDE_BRUSH_LEFT = [{"piid":9,"siid":4,"did":"<did>"}] #Side brush remaining life hours
+            MAIN_BRUSH_LEFT_PERCENTAGE = [{"piid":10,"siid":4,"did":"<did>"}] #Percentage of main brush remaining life
+            MAIN_BRUSH_LEFT = [{"piid":11,"siid":4,"did":"<did>"}] #Main brush remaining life hours
+            FILTER_LEFT_PERCENTAGE = [{"piid":12,"siid":4,"did":"<did>"}] #Percentage remaining life of Hypa
+            FILTER_LEFT = [{"piid":13,"siid":4,"did":"<did>"}] #Hypa remaining life hours
+            MOP_LEFT_PERCENTAGE = [{"piid":14,"siid":4,"did":"<did>"}] #Mop remaining life percentage
+            MOP_LEFT = [{"piid":15,"siid":4,"did":"<did>"}] #Mop remaining life hours
 
             state = []
             state.append((self._vacuum.raw_command('get_properties', RUN_STATE)[0])["value"])
@@ -440,6 +457,16 @@ class MiroboVacuum2(StateVacuumEntity):
             state.append((self._vacuum.raw_command('get_properties', HAS_MAP)[0])["value"])
             state.append((self._vacuum.raw_command('get_properties', IS_MOP)[0])["value"])
             state.append((self._vacuum.raw_command('get_properties', HAS_NEWMAP)[0])["value"])
+
+            state.append((self._vacuum.raw_command('get_properties', SIDE_BRUSH_LEFT_PERCENTAGE)[0])["value"])
+            state.append((self._vacuum.raw_command('get_properties', SIDE_BRUSH_LEFT)[0])["value"])
+            state.append((self._vacuum.raw_command('get_properties', MAIN_BRUSH_LEFT_PERCENTAGE)[0])["value"])
+            state.append((self._vacuum.raw_command('get_properties', MAIN_BRUSH_LEFT)[0])["value"])
+            state.append((self._vacuum.raw_command('get_properties', FILTER_LEFT_PERCENTAGE)[0])["value"])
+            state.append((self._vacuum.raw_command('get_properties', FILTER_LEFT)[0])["value"])
+            state.append((self._vacuum.raw_command('get_properties', MOP_LEFT_PERCENTAGE)[0])["value"])
+            state.append((self._vacuum.raw_command('get_properties', MOP_LEFT)[0])["value"])
+
 
             self.vacuum_state = dict(zip(ALL_PROPS, state))
 
@@ -482,7 +509,7 @@ class MiroboVacuum2(StateVacuumEntity):
         for z in zone:
             x1, y2, x2, y1 = z
             res = '_'.join(str(x)
-                           for x in [i, 0, x1, y1, x1, y2, x2, y2, x2, y1])
+            for x in [i, 0, x1, y1, x1, y2, x2, y2, x2, y1])
             for _ in range(repeats):
                 result.append(res)
                 i += 1
