@@ -418,29 +418,6 @@ class MiroboVacuum2(StateVacuumEntity):
     def update(self):
         """Fetch state from the device."""
         try:
-            RUN_STATE = [{"piid":1,"siid":2,"did":"<did>"}] #Status
-            MODE = [{"piid":18,"siid":2,"did":"<did>"}] #Sweep type?
-            ERR_STATE = [{"piid": 2, "siid": 2, "did": "<did>"}] #Device Fault
-            BATTERY_LIFE = [{"piid":1,"siid":3,"did":"<did>"}] #Battery Level
-            BOX_TYPE =  [{"piid":12,"siid":2,"did":"<did>"}] #Door State (Tank Type?)
-            MOP_TYPE =  [{"piid":13,"siid":2,"did":"<did>"}] #Contact State (Mop attached)
-            S_TIME = [{"piid":15,"siid":2,"did":"<did>"}] #Last operation time in minutes
-            S_AREA = [{"piid":16,"siid":2,"did":"<did>"}] #Last cleaning area in m2
-            SUCTION_GRADE = [{"piid": 19, "siid": 2, "did": "<did>"}] #Suction power
-            WATER_GRADE = [{"piid":18,"siid":4,"did":"<did>"}] #Water output
-            REMEMBER_MAP = [{"piid":3,"siid":4,"did":"<did>"}] #Memory map switch
-            HAS_MAP = [{"piid":4,"siid":4,"did":"<did>"}] #Is there a memory map
-            IS_MOP = [{"piid":11,"siid":2,"did":"<did>"}] #Wide Dynamic Range Mode (0=Vacuum 1=Vacuum&Mop 2=Mop)
-            HAS_NEWMAP = [{"piid":5,"siid":4,"did":"<did>"}] #After the cleaning is completed, whether the machine recognizes the new map, if the app pops up to prompt the user whether to overwrite the memory map?
-            
-            SIDE_BRUSH_LEFT_PERCENTAGE = [{"piid":8,"siid":4,"did":"<did>"}] #Side brush remaining life percentage
-            SIDE_BRUSH_LEFT = [{"piid":9,"siid":4,"did":"<did>"}] #Side brush remaining life hours
-            MAIN_BRUSH_LEFT_PERCENTAGE = [{"piid":10,"siid":4,"did":"<did>"}] #Percentage of main brush remaining life
-            MAIN_BRUSH_LEFT = [{"piid":11,"siid":4,"did":"<did>"}] #Main brush remaining life hours
-            FILTER_LEFT_PERCENTAGE = [{"piid":12,"siid":4,"did":"<did>"}] #Percentage remaining life of Hypa
-            FILTER_LEFT = [{"piid":13,"siid":4,"did":"<did>"}] #Hypa remaining life hours
-            MOP_LEFT_PERCENTAGE = [{"piid":14,"siid":4,"did":"<did>"}] #Mop remaining life percentage
-            MOP_LEFT = [{"piid":15,"siid":4,"did":"<did>"}] #Mop remaining life hours
 
             mapping = [
                 {"did":"run_state","piid":1,"siid":2},
