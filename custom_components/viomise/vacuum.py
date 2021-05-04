@@ -442,31 +442,38 @@ class MiroboVacuum2(StateVacuumEntity):
             MOP_LEFT_PERCENTAGE = [{"piid":14,"siid":4,"did":"<did>"}] #Mop remaining life percentage
             MOP_LEFT = [{"piid":15,"siid":4,"did":"<did>"}] #Mop remaining life hours
 
+            mapping = [
+                {"did":"run_state","piid":1,"siid":2},
+                {"did":"mode","piid":18,"siid":2},
+                {"did":"err_state","piid":2,"siid":2},
+                {"did":"battery_life","piid":1,"siid":3},
+                {"did":"box_type","piid":12,"siid":2},
+                {"did":"mop_type","piid":13,"siid":2},
+                {"did":"s_time","piid":15,"siid":2},
+                {"did":"s_area","piid":16,"siid":2},
+                {"did":"suction_grade","piid":19,"siid":2},
+                {"did":"water_grade","piid":18,"siid":4},
+                {"did":"remember_map","piid":3,"siid":4},
+                {"did":"has_map","piid":4,"siid":4},
+                {"did":"is_mop","piid":11,"siid":2},
+                {"did":"has_newmap","piid":5,"siid":4},
+                {"did":"side_brush_left_percentage","piid":8,"siid":4},
+                {"did":"side_brush_left","piid":9,"siid":4},
+                {"did":"main_brush_left_percentage","piid":10,"siid":4},
+                {"did":"main_brush","piid":11,"siid":4},
+                {"did":"filter_left_percentage","piid":12,"siid":4},
+                {"did":"filter_left","piid":13,"siid":4},
+                {"did":"mop_left_percentage","piid":14,"siid":4},
+                {"did":"mop_left","piid":15,"siid":4}
+                ]
+            
+            # Respect the maximum
+            properties = self._vacuum.raw_command('get_properties', mapping[:12])
+            properties.extend(self._vacuum.raw_command('get_properties', mapping[12:]))
+
             state = []
-            state.append((self._vacuum.raw_command('get_properties', RUN_STATE)[0])["value"])
-            state.append((self._vacuum.raw_command('get_properties', MODE)[0])["value"])
-            state.append((self._vacuum.raw_command('get_properties', ERR_STATE)[0])["value"])
-            state.append((self._vacuum.raw_command('get_properties', BATTERY_LIFE)[0])["value"])
-            state.append((self._vacuum.raw_command('get_properties', BOX_TYPE)[0])["value"])
-            state.append((self._vacuum.raw_command('get_properties', MOP_TYPE)[0])["value"])
-            state.append((self._vacuum.raw_command('get_properties', S_TIME)[0])["value"])
-            state.append((self._vacuum.raw_command('get_properties', S_AREA)[0])["value"])
-            state.append((self._vacuum.raw_command('get_properties', SUCTION_GRADE)[0])["value"])
-            state.append((self._vacuum.raw_command('get_properties', WATER_GRADE)[0])["value"])
-            state.append((self._vacuum.raw_command('get_properties', REMEMBER_MAP)[0])["value"])
-            state.append((self._vacuum.raw_command('get_properties', HAS_MAP)[0])["value"])
-            state.append((self._vacuum.raw_command('get_properties', IS_MOP)[0])["value"])
-            state.append((self._vacuum.raw_command('get_properties', HAS_NEWMAP)[0])["value"])
-
-            state.append((self._vacuum.raw_command('get_properties', SIDE_BRUSH_LEFT_PERCENTAGE)[0])["value"])
-            state.append((self._vacuum.raw_command('get_properties', SIDE_BRUSH_LEFT)[0])["value"])
-            state.append((self._vacuum.raw_command('get_properties', MAIN_BRUSH_LEFT_PERCENTAGE)[0])["value"])
-            state.append((self._vacuum.raw_command('get_properties', MAIN_BRUSH_LEFT)[0])["value"])
-            state.append((self._vacuum.raw_command('get_properties', FILTER_LEFT_PERCENTAGE)[0])["value"])
-            state.append((self._vacuum.raw_command('get_properties', FILTER_LEFT)[0])["value"])
-            state.append((self._vacuum.raw_command('get_properties', MOP_LEFT_PERCENTAGE)[0])["value"])
-            state.append((self._vacuum.raw_command('get_properties', MOP_LEFT)[0])["value"])
-
+            for d in properties:
+                state.append(d['value'])
 
             self.vacuum_state = dict(zip(ALL_PROPS, state))
 
