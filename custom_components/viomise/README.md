@@ -55,6 +55,7 @@ vacuum:
     token: !secret vacuum
     name: Viomi SE
 ```
-Vacuum token can be extracted by following [this guide](https://www.home-assistant.io/integrations/xiaomi_miio/#retrieving-the-access-token).
-You also need to enter your Xiaomi Cloud username and password.
+Note: Vacuum token can be extracted by following [this guide](https://www.home-assistant.io/integrations/xiaomi_miio/#retrieving-the-access-token).
+I recommend using the python script method to extract the token as it is simpler, and only requires you to enter your Xiaomi Cloud username and password.
 These are the credentials used for the Xiaomi Home app (_not ones from Viomi Robot app_).
+
