@@ -146,8 +146,8 @@ ALL_PROPS = [
     "filter_left",
     "mop_percentage",
     "mop_left",
-    "repeat-state",
-    "mop-route"
+    "repeat_state",
+    "mop_route"
 ]
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
