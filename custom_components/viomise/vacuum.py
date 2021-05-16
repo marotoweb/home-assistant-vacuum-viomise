@@ -145,7 +145,9 @@ ALL_PROPS = [
     "filter_percentage",
     "filter_left",
     "mop_percentage",
-    "mop_left"
+    "mop_left",
+    "repeat-state",
+    "mop-route"
 ]
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
@@ -420,28 +422,30 @@ class MiroboVacuum2(StateVacuumEntity):
         try:
 
             mapping = [
-                {"did":"run_state","piid":1,"siid":2},
-                {"did":"mode","piid":18,"siid":2},
-                {"did":"err_state","piid":2,"siid":2},
-                {"did":"battery_life","piid":1,"siid":3},
-                {"did":"box_type","piid":12,"siid":2},
-                {"did":"mop_type","piid":13,"siid":2},
-                {"did":"s_time","piid":15,"siid":2},
-                {"did":"s_area","piid":16,"siid":2},
-                {"did":"suction_grade","piid":19,"siid":2},
-                {"did":"water_grade","piid":18,"siid":4},
-                {"did":"remember_map","piid":3,"siid":4},
-                {"did":"has_map","piid":4,"siid":4},
-                {"did":"is_mop","piid":11,"siid":2},
-                {"did":"has_newmap","piid":5,"siid":4},
-                {"did":"main_brush_left_percentage","piid":10,"siid":4},
-                {"did":"main_brush","piid":11,"siid":4},
-                {"did":"side_brush_left_percentage","piid":8,"siid":4},
-                {"did":"side_brush_left","piid":9,"siid":4},
-                {"did":"filter_left_percentage","piid":12,"siid":4},
-                {"did":"filter_left","piid":13,"siid":4},
-                {"did":"mop_left_percentage","piid":14,"siid":4},
-                {"did":"mop_left","piid":15,"siid":4}
+                {"did":"run_state","siid":2,"piid":1},
+                {"did":"mode","siid":2,"piid":18},
+                {"did":"err_state","siid":2,"piid":2},
+                {"did":"battery_life","siid":3,"piid":1},
+                {"did":"box_type","siid":2,"piid":12},
+                {"did":"mop_type","siid":2,"piid":13},
+                {"did":"s_time","siid":2,"piid":15},
+                {"did":"s_area","siid":2,"piid":16},
+                {"did":"suction_grade","siid":2,"piid":19},
+                {"did":"water_grade","siid":4,"piid":18,},
+                {"did":"remember_map","siid":4,"piid":3},
+                {"did":"has_map","siid":4,"piid":4},
+                {"did":"is_mop","siid":2,"piid":11},
+                {"did":"has_newmap","siid":4,"piid":5},
+                {"did":"main_brush_left_percentage","siid":4,"piid":10},
+                {"did":"main_brush","siid":4,"piid":11,},
+                {"did":"side_brush_left_percentage","siid":4,"piid":8},
+                {"did":"side_brush_left","siid":4,"piid":9},
+                {"did":"filter_left_percentage","siid":4,"piid":12},
+                {"did":"filter_left","siid":4,"piid":13},
+                {"did":"mop_left_percentage","siid":4,"piid":14},
+                {"did":"mop_left","siid":4,"piid":15},
+                {"did":"repeat_state","siid":4,"piid":1},
+                {"did":"mop_route","siid":4,"piid":6}
                 ]
             
             # Respect the maximum
