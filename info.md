@@ -2,7 +2,7 @@
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/custom-components/hacs)
 
-## This is for Viomi Robot Vacuum Cleaner SE (apparently EU version) with 4.0.9_0012 firmware 
+## This is for Viomi Robot Vacuum Cleaner SE (apparently EU version) with 4.0.9_0012 firmware tested in 4.0.9_0017
 Repository is forked from KrzysztofHajdamowicz/home-assistant-vacuum-styj02ym
 
 Due to my lack of knowledge in python some things may not make sense or there is a better way to do them, we just shouldn't be stuck
