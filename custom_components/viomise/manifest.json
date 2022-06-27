@@ -8,5 +8,5 @@
   "codeowners": ["@nqkdev", "@KrzysztofHajdamowicz", "@marotoweb"],
   "config_flow": false,
   "iot_class": "local_polling",
-  "version": "v2021.05.16"
+  "version": "2022.6.7"
 }
