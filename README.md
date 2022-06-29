@@ -55,7 +55,12 @@ vacuum:
     host: 192.168.68.105
     token: !secret vacuum
     name: Viomi SE
+    # do not flood the vacuum with requests with scan_interval
+    scan_interval: 30
 ```
 Note: Vacuum token can be extracted by following [this guide](https://www.home-assistant.io/integrations/xiaomi_miio/#retrieving-the-access-token).
 I recommend using the python script method to extract the token as it is simpler, and only requires you to enter your Xiaomi Cloud username and password.
 These are the credentials used for the Xiaomi Home app (_not ones from Viomi Robot app_).
+
+## Recommended lovelace card with user-friendly way to fully control Viomi
+* [*Lovelace Vacuum Map card*](https://github.com/PiotrMachowski/lovelace-xiaomi-vacuum-map-card)
