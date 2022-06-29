@@ -10,11 +10,11 @@
 
 ### Using [HACS](https://hacs.xyz/) (recommended)
 
-This integration can be added to HACS as a [custom repository](https://hacs.xyz/docs/faq/custom_repositories):
-* URL: `https://github.com/marotoweb/home-assistant-vacuum-viomise`
-* Category: `Integration`
-
-After adding a custom repository you can use HACS to install this integration using user interface.
+- Open HACS
+- Go to "Integrations" section
+- Click button with "+" icon
+- Search for "Viomi Robot Vacuum Cleaner SE"
+- Install repository in HACS
 
 ### Manual
 
