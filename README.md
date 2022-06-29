@@ -62,5 +62,6 @@ Note: Vacuum token can be extracted by following [this guide](https://www.home-a
 I recommend using the python script method to extract the token as it is simpler, and only requires you to enter your Xiaomi Cloud username and password.
 These are the credentials used for the Xiaomi Home app (_not ones from Viomi Robot app_).
 
-## Recommended lovelace card with user-friendly way to fully control Viomi
+## Recommended lovelace card with user-friendly way to fully control Viomi that works with this integration
 * [*Lovelace Vacuum Map card*](https://github.com/PiotrMachowski/lovelace-xiaomi-vacuum-map-card)
+* [*Add new?...*](https://github.com/marotoweb/home-assistant-vacuum-viomise/issues/new)
