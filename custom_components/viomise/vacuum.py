@@ -161,7 +161,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
     # Create handler
     _LOGGER.info("Initializing with host %s (token %s...)", host, token[:5])
-    vacuum = ViomiVacuum(host, token)
+    vacuum = ViomiVacuum(host, token, model="viomi.vacuum.v19")
 
     mirobo = MiroboVacuum2(name, vacuum)
     hass.data[DATA_KEY][host] = mirobo
