@@ -2,29 +2,21 @@
 import asyncio
 from functools import partial
 import logging
+import warnings
 
-from miio import DeviceException, ViomiVacuum  # pylint: disable=import-error
+# Suppress FutureWarning from miio.miot_device (Python 3.13+ functools.partial change)
+warnings.filterwarnings("ignore", category=FutureWarning, module=r"miio\.miot_device")
+
+from miio import DeviceException  # pylint: disable=import-error
+from miio.miot_device import MiotDevice  # pylint: disable=import-error
 import voluptuous as vol
 
 from homeassistant.components.vacuum import (
     ATTR_CLEANED_AREA,
     DOMAIN,
     PLATFORM_SCHEMA,
-    STATE_CLEANING,
-    STATE_DOCKED,
-    STATE_ERROR,
-    STATE_IDLE,
-    STATE_PAUSED,
-    STATE_RETURNING,
-    SUPPORT_BATTERY,
-    SUPPORT_FAN_SPEED,
-    SUPPORT_LOCATE,
-    SUPPORT_PAUSE,
-    SUPPORT_RETURN_HOME,
-    SUPPORT_SEND_COMMAND,
-    SUPPORT_START,
-    SUPPORT_STATE,
-    SUPPORT_STOP,
+    VacuumEntityFeature,
+    VacuumActivity,
     StateVacuumEntity,
 )
 from homeassistant.const import (
@@ -100,27 +92,26 @@ FAN_SPEEDS = {"Silent": 0, "Standard": 1, "Medium": 2, "Turbo": 3}
 
 
 SUPPORT_XIAOMI = (
-    SUPPORT_STATE
-    | SUPPORT_PAUSE
-    | SUPPORT_STOP
-    | SUPPORT_RETURN_HOME
-    | SUPPORT_FAN_SPEED
-    | SUPPORT_LOCATE
-    | SUPPORT_SEND_COMMAND
-    | SUPPORT_BATTERY
-    | SUPPORT_START
+    VacuumEntityFeature.STATE
+    | VacuumEntityFeature.PAUSE
+    | VacuumEntityFeature.STOP
+    | VacuumEntityFeature.RETURN_HOME
+    | VacuumEntityFeature.FAN_SPEED
+    | VacuumEntityFeature.LOCATE
+    | VacuumEntityFeature.SEND_COMMAND
+    | VacuumEntityFeature.START
 )
 
 
-STATE_CODE_TO_STATE = {
-    0: STATE_IDLE,      # Sleep
-    1: STATE_IDLE,      # Idle
-    2: STATE_PAUSED,    # Paused
-    3: STATE_RETURNING, # Go Charging
-    4: STATE_DOCKED,    # Charging
-    5: STATE_CLEANING,  # Vacuum
-    6: STATE_CLEANING,  # Vacuum & Mop
-    7: STATE_CLEANING   # Mop only
+STATE_CODE_TO_ACTIVITY = {
+    0: VacuumActivity.IDLE,      # Sleep
+    1: VacuumActivity.IDLE,      # Idle
+    2: VacuumActivity.PAUSED,    # Paused
+    3: VacuumActivity.RETURNING, # Go Charging
+    4: VacuumActivity.DOCKED,    # Charging
+    5: VacuumActivity.CLEANING,  # Vacuum
+    6: VacuumActivity.CLEANING,  # Vacuum & Mop
+    7: VacuumActivity.CLEANING   # Mop only
 }
 
 ALL_PROPS = [
@@ -161,7 +152,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
     # Create handler
     _LOGGER.info("Initializing with host %s (token %s...)", host, token[:5])
-    vacuum = ViomiVacuum(host, token)
+    vacuum = MiotDevice(host, token, model="viomi.vacuum.v19", mapping={})
 
     mirobo = MiroboVacuum2(name, vacuum)
     hass.data[DATA_KEY][host] = mirobo
@@ -239,26 +230,19 @@ class MiroboVacuum2(StateVacuumEntity):
         return self._name
 
     @property
-    def state(self):
-        """Return the status of the vacuum cleaner."""
+    def activity(self):
+        """Return the current activity of the vacuum cleaner."""
         if self.vacuum_state is not None:
-            # The vacuum reverts back to an idle state after erroring out.
-            # We want to keep returning an error until it has been cleared.
-
             try:
-                return STATE_CODE_TO_STATE[int(self.vacuum_state['run_state'])]
+                return STATE_CODE_TO_ACTIVITY[int(self.vacuum_state['run_state'])]
             except KeyError:
                 _LOGGER.error(
-                    "STATE not supported, state_code: %s",
+                    "Activity not supported, state_code: %s",
                     self.vacuum_state['run_state'],
                 )
                 return None
 
-    @property
-    def battery_level(self):
-        """Return the battery level of the vacuum cleaner."""
-        if self.vacuum_state is not None:
-            return self.vacuum_state['battary_life']
+
 
     @property
     def fan_speed(self):
@@ -282,11 +266,27 @@ class MiroboVacuum2(StateVacuumEntity):
         attrs = {}
         if self.vacuum_state is not None:
             attrs.update(self.vacuum_state)
-            try:
-                attrs['status'] = STATE_CODE_TO_STATE[int(
-                    self.vacuum_state['run_state'])]
-            except KeyError:
-                return "Definition missing for state %s" % self.vacuum_state['run_state']
+            activity = self.activity
+            if activity is not None:
+                attrs['activity'] = activity.value
+            # Add status for backward compatibility (derive from activity)
+            activity = self.activity
+            if activity is not None:
+                activity_to_state = {
+                    VacuumActivity.IDLE: "idle",
+                    VacuumActivity.PAUSED: "paused",
+                    VacuumActivity.RETURNING: "returning",
+                    VacuumActivity.DOCKED: "docked",
+                    VacuumActivity.CLEANING: "cleaning",
+                    VacuumActivity.ERROR: "error",
+                }
+                state = activity_to_state.get(activity)
+                if state is not None:
+                    attrs['status'] = state
+            # Expose battery level prominently for UI display
+            if 'battary_life' in self.vacuum_state:
+                attrs['battery_level'] = self.vacuum_state['battary_life']
+                attrs['battery'] = f"{self.vacuum_state['battary_life']}%"
         return attrs
 
     @property
