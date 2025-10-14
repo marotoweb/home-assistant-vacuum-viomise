@@ -1,24 +1,21 @@
-"""Support for the Viomi vacuum cleaner robot."""
+"""Custom Component for Viomi SE vacuum robot in Home Assistant."""
 import asyncio
 from functools import partial
+
 import logging
-import warnings
+from datetime import timedelta
 
-# Suppress FutureWarning from miio.miot_device (Python 3.13+ functools.partial change)
-warnings.filterwarnings("ignore", category=FutureWarning, module=r"miio\.miot_device")
+from miio import DeviceException, ViomiVacuum
 
-from miio import DeviceException  # pylint: disable=import-error
-from miio.miot_device import MiotDevice  # pylint: disable=import-error
 import voluptuous as vol
 
 from homeassistant.components.vacuum import (
-    ATTR_CLEANED_AREA,
-    DOMAIN,
-    PLATFORM_SCHEMA,
-    VacuumEntityFeature,
     VacuumActivity,
     StateVacuumEntity,
+    VacuumEntityFeature,
+    DOMAIN as VACUUM_DOMAIN,
 )
+
 from homeassistant.const import (
     ATTR_ENTITY_ID,
     CONF_HOST,
@@ -26,11 +23,15 @@ from homeassistant.const import (
     CONF_TOKEN,
     STATE_OFF,
     STATE_ON,
+    Platform,
 )
 
-import homeassistant.helpers.device_registry as dr
+from .const import DOMAIN, DATA_KEY
 
-import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers import entity
+from homeassistant.helpers import config_validation as cv
+
+from homeassistant.helpers.config_validation import PLATFORM_SCHEMA
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -46,12 +47,31 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     extra=vol.ALLOW_EXTRA,
 )
 
+SCAN_INTERVAL = timedelta(seconds=30)
+
+STATE_CODE_TO_STATE = {
+    0: VacuumActivity.IDLE,
+    1: VacuumActivity.IDLE,
+    2: VacuumActivity.PAUSED,
+    3: VacuumActivity.RETURNING,
+    4: VacuumActivity.DOCKED,
+    5: VacuumActivity.CLEANING,
+    6: VacuumActivity.CLEANING,
+    7: VacuumActivity.CLEANING,
+}
+
 VACUUM_SERVICE_SCHEMA = vol.Schema(
     {vol.Optional(ATTR_ENTITY_ID): cv.comp_entity_ids})
-SERVICE_CLEAN_ZONE = "xiaomi_clean_zone"
+SERVICE_CLEAN_ZONE = "vacuum_clean_zone"
+SERVICE_GOTO = "vacuum_goto"
+SERVICE_CLEAN_SEGMENT = "vacuum_clean_segment"
+SERVICE_OBS_CLEAN_ZONE = "xiaomi_clean_zone"
 SERVICE_CLEAN_POINT = "xiaomi_clean_point"
 ATTR_ZONE_ARRAY = "zone"
 ATTR_ZONE_REPEATER = "repeats"
+ATTR_X_COORD = "x_coord"
+ATTR_Y_COORD = "y_coord"
+ATTR_SEGMENTS = "segments"
 ATTR_POINT = "point"
 SERVICE_SCHEMA_CLEAN_ZONE = VACUUM_SERVICE_SCHEMA.extend(
     {
@@ -68,6 +88,20 @@ SERVICE_SCHEMA_CLEAN_ZONE = VACUUM_SERVICE_SCHEMA.extend(
         ),
     }
 )
+SERVICE_SCHEMA_GOTO = VACUUM_SERVICE_SCHEMA.extend(
+    {
+        vol.Required(ATTR_X_COORD): vol.Coerce(float),
+        vol.Required(ATTR_Y_COORD): vol.Coerce(float),
+    }
+)
+SERVICE_SCHEMA_CLEAN_SEGMENT = VACUUM_SERVICE_SCHEMA.extend(
+    {
+        vol.Required(ATTR_SEGMENTS): vol.Any(
+            vol.Coerce(int),
+            [vol.Coerce(int)]
+        ),
+    }
+)
 SERVICE_SCHEMA_CLEAN_POINT = VACUUM_SERVICE_SCHEMA.extend(
     {
         vol.Required(ATTR_POINT): vol.All(
@@ -79,6 +113,18 @@ SERVICE_SCHEMA_CLEAN_POINT = VACUUM_SERVICE_SCHEMA.extend(
 )
 SERVICE_TO_METHOD = {
     SERVICE_CLEAN_ZONE: {
+        "method": "async_clean_zone",
+        "schema": SERVICE_SCHEMA_CLEAN_ZONE,
+    },
+    SERVICE_GOTO: {
+        "method": "async_goto",
+        "schema": SERVICE_SCHEMA_GOTO,
+    },
+    SERVICE_CLEAN_SEGMENT: {
+        "method": "async_clean_segment",
+        "schema": SERVICE_SCHEMA_CLEAN_SEGMENT,
+    },
+    SERVICE_OBS_CLEAN_ZONE: {
         "method": "async_clean_zone",
         "schema": SERVICE_SCHEMA_CLEAN_ZONE,
     },
@@ -99,11 +145,12 @@ SUPPORT_XIAOMI = (
     | VacuumEntityFeature.FAN_SPEED
     | VacuumEntityFeature.LOCATE
     | VacuumEntityFeature.SEND_COMMAND
+    | VacuumEntityFeature.BATTERY
     | VacuumEntityFeature.START
 )
 
 
-STATE_CODE_TO_ACTIVITY = {
+STATE_CODE_TO_STATE = {
     0: VacuumActivity.IDLE,      # Sleep
     1: VacuumActivity.IDLE,      # Idle
     2: VacuumActivity.PAUSED,    # Paused
@@ -141,108 +188,126 @@ ALL_PROPS = [
     "mop_route"
 ]
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    """Set up the Xiaomi vacuum cleaner robot platform."""
-    if DATA_KEY not in hass.data:
-        hass.data[DATA_KEY] = {}
+VACUUM_CARD_PROPS_REFERENCES = {
+    'cleaned_area': 's_area',
+    'cleaning_time': 's_time'
+}
 
-    host = config[CONF_HOST]
-    token = config[CONF_TOKEN]
-    name = config[CONF_NAME]
+async def async_setup_entry(hass, config_entry, async_add_entities):
+    """Set up the Xiaomi vacuum platform from config entry."""
+    host = config_entry.data[CONF_HOST]
+    token = config_entry.data[CONF_TOKEN]
+    name = config_entry.data[CONF_NAME]
 
     # Create handler
     _LOGGER.info("Initializing with host %s (token %s...)", host, token[:5])
-    vacuum = MiotDevice(host, token, model="viomi.vacuum.v19", mapping={})
 
+    vacuum = ViomiVacuum(host, token, model="viomi.vacuum.v19")
     mirobo = MiroboVacuum2(name, vacuum)
+    
+    hass.data.setdefault(DATA_KEY, {})
     hass.data[DATA_KEY][host] = mirobo
-
+    hass.data[DOMAIN][config_entry.entry_id] = mirobo
     async_add_entities([mirobo], update_before_add=True)
 
     async def async_service_handler(service):
         """Map services to methods on MiroboVacuum."""
         method = SERVICE_TO_METHOD.get(service.service)
+        if not method:
+            _LOGGER.error(f"Service {service.service} was called but is not registered")
+            return
+
         params = {
-            key: value for key,
-            value in service.data.items() if key != ATTR_ENTITY_ID}
+            key: value for key, value in service.data.items() if key != ATTR_ENTITY_ID
+        }
         entity_ids = service.data.get(ATTR_ENTITY_ID)
 
+        target_vacuums = []
         if entity_ids:
             target_vacuums = [
-                vac
-                for vac in hass.data[DATA_KEY].values()
+                vac for vac in hass.data[DATA_KEY].values()
                 if vac.entity_id in entity_ids
             ]
         else:
-            target_vacuums = hass.data[DATA_KEY].values()
+            target_vacuums = list(hass.data[DATA_KEY].values())
 
         update_tasks = []
         for vacuum in target_vacuums:
-            await getattr(vacuum, method["method"])(**params)
+            try:
+                await getattr(vacuum, method["method"])(**params)
+            except AttributeError as err:
+                _LOGGER.error("Method %s not found in vacuum: %s", method["method"], err)
+                continue
 
         for vacuum in target_vacuums:
-            update_coro = vacuum.async_update_ha_state(True)
-            update_tasks.append(asyncio.create_task(update_coro))
+            update_tasks.append(vacuum.async_update_ha_state(True))
 
         if update_tasks:
-            await asyncio.wait(update_tasks)
+            await asyncio.gather(*update_tasks)
 
+    # Register services
     for vacuum_service in SERVICE_TO_METHOD:
-        schema = SERVICE_TO_METHOD[vacuum_service].get(
-            "schema", VACUUM_SERVICE_SCHEMA)
+        schema = SERVICE_TO_METHOD[vacuum_service].get("schema", VACUUM_SERVICE_SCHEMA)
         hass.services.async_register(
-            DOMAIN, vacuum_service, async_service_handler, schema=schema
+            VACUUM_DOMAIN,  # Register under the vacuum domain
+            vacuum_service,
+            async_service_handler,
+            schema=schema,
         )
 
+    return True
 
 class MiroboVacuum2(StateVacuumEntity):
     """Representation of a Xiaomi Vacuum cleaner robot."""
 
     def __init__(self, name, vacuum):
         """Initialize the Xiaomi vacuum cleaner robot handler."""
-        try:
-            self._miio_info = vacuum.info()
-        except DeviceException as exc:
-            _LOGGER.error("Device %s unavailable or token incorrect: %s", name, exc)
-            raise PlatformNotReady from exc
-
-        self._unique_did = dr.format_mac(self._miio_info.mac_address)
-        self._unique_id = self._unique_did
-
-        _LOGGER.info("Device vacuum unique_id: %s", self._unique_id) 
-
         self._name = name
         self._vacuum = vacuum
-
+        self._unique_id = f"{vacuum.ip}-{vacuum.token}"  # Create unique ID from IP and token
         self._last_clean_point = None
-
         self.vacuum_state = None
         self._available = False
 
     @property
-    def unique_id(self):
-        """Return the unique_id of the device."""
+    def unique_id(self) -> str:
+        """Return a unique ID."""
         return self._unique_id
-    
+
+    @property
+    def device_info(self):
+        """Return device info for this vacuum."""
+        return {
+            "identifiers": {(DOMAIN, self._unique_id)},
+            "name": self._name,
+            "manufacturer": "Viomi",
+            "model": "Vacuum cleaner V-RVCLM21A",
+        }
+
     @property
     def name(self):
         """Return the name of the device."""
         return self._name
+    
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return bool(self.coordinator.data)
+    
 
     @property
     def activity(self):
-        """Return the current activity of the vacuum cleaner."""
+        """Return the activity of the vacuum using the VacuumActivity enum."""
         if self.vacuum_state is not None:
-            try:
-                return STATE_CODE_TO_ACTIVITY[int(self.vacuum_state['run_state'])]
-            except KeyError:
-                _LOGGER.error(
-                    "Activity not supported, state_code: %s",
-                    self.vacuum_state['run_state'],
-                )
-                return None
+            return STATE_CODE_TO_STATE.get(int(self.vacuum_state['run_state']), VacuumActivity.IDLE)
+        return VacuumActivity.IDLE
+    
 
-
+    @property
+    def battery_level(self):
+        """Return the battery level of the vacuum cleaner."""
+        if self.vacuum_state is not None:
+            return self.vacuum_state['battary_life']
 
     @property
     def fan_speed(self):
@@ -266,27 +331,11 @@ class MiroboVacuum2(StateVacuumEntity):
         attrs = {}
         if self.vacuum_state is not None:
             attrs.update(self.vacuum_state)
-            activity = self.activity
-            if activity is not None:
-                attrs['activity'] = activity.value
-            # Add status for backward compatibility (derive from activity)
-            activity = self.activity
-            if activity is not None:
-                activity_to_state = {
-                    VacuumActivity.IDLE: "idle",
-                    VacuumActivity.PAUSED: "paused",
-                    VacuumActivity.RETURNING: "returning",
-                    VacuumActivity.DOCKED: "docked",
-                    VacuumActivity.CLEANING: "cleaning",
-                    VacuumActivity.ERROR: "error",
-                }
-                state = activity_to_state.get(activity)
-                if state is not None:
-                    attrs['status'] = state
-            # Expose battery level prominently for UI display
-            if 'battary_life' in self.vacuum_state:
-                attrs['battery_level'] = self.vacuum_state['battary_life']
-                attrs['battery'] = f"{self.vacuum_state['battary_life']}%"
+            try:
+                attrs['status'] = STATE_CODE_TO_STATE[int(
+                    self.vacuum_state['run_state'])]
+            except KeyError:
+                return "Definition missing for state %s" % self.vacuum_state['run_state']
         return attrs
 
     @property
@@ -313,8 +362,6 @@ class MiroboVacuum2(StateVacuumEntity):
         mode = self.vacuum_state['mode']
         is_mop = self.vacuum_state['is_mop']
         actionMode = 0
-        
-        #Sweep type / mode: 0=Global, 1=Mop, 2=Edge, 3=Area, 4=Point, 5= Control
 
         if mode == 4 and self._last_clean_point is not None:
             method = 'set_pointclean'
@@ -416,10 +463,28 @@ class MiroboVacuum2(StateVacuumEntity):
             params,
         )
         # self.update()
+        
+    async def _async_update_data(self):
+        """Fetch state from the vacuum, handling errors gracefully."""
+        try:
+            data = await self.hass.async_add_executor_job(self.vacuum.status)
+            if not data:
+                raise DeviceException("No data received from vacuum")
+            return data
+        except OSError as exc:
+            _LOGGER.error("Network error while fetching the vacuum state: %s", exc)
+            return {}
+        except DeviceException as exc:
+            if "Unable to discover the device" in str(exc):
+                _LOGGER.error("Viomi SE offline ou IP incorreto: %s", exc)
+            else:
+                _LOGGER.warning("Got exception while fetching the state: %s", exc)
+            return {}
 
     def update(self):
         """Fetch state from the device."""
         try:
+            state = self._vacuum.raw_command('get_prop', ALL_PROPS)
 
             mapping = [
                 {"did":"run_state","siid":2,"piid":1},
@@ -485,10 +550,12 @@ class MiroboVacuum2(StateVacuumEntity):
                 if update_mop is not None and update_mop != is_mop:
                     self._vacuum.raw_command('set_mop', [update_mop])
                     self.update()
+                
         except OSError as exc:
             _LOGGER.error("Got OSError while fetching the state: %s", exc)
         except DeviceException as exc:
             _LOGGER.warning("Got exception while fetching the state: %s", exc)
+
 
     async def async_clean_zone(self, zone, repeats=1):
         """Clean selected area for the number of repeats indicated."""
@@ -506,6 +573,20 @@ class MiroboVacuum2(StateVacuumEntity):
         await self._try_command("Unable to clean zone: %s", self._vacuum.raw_command, 'set_uploadmap', [1]) \
             and await self._try_command("Unable to clean zone: %s", self._vacuum.raw_command, 'set_zone', result) \
             and await self._try_command("Unable to clean zone: %s", self._vacuum.raw_command, 'set_mode', [3, 1])
+
+    async def async_goto(self, x_coord, y_coord):
+        """Clean area around the specified coordinates"""
+        self._last_clean_point = [x_coord, y_coord]
+        await self._try_command("Unable to goto: %s", self._vacuum.raw_command, 'set_uploadmap', [0]) \
+            and await self._try_command("Unable to goto: %s", self._vacuum.raw_command, 'set_pointclean', [1, x_coord, y_coord])
+
+    async def async_clean_segment(self, segments):
+        """Clean selected segment(s) (rooms)"""
+        if isinstance(segments, int):
+            segments = [segments]
+
+        await self._try_command("Unable to clean segments: %s", self._vacuum.raw_command, 'set_uploadmap', [1]) \
+            and await self._try_command("Unable to clean segments: %s", self._vacuum.raw_command, 'set_mode_withroom', [0, 1, len(segments)] + segments)
 
     async def async_clean_point(self, point):
         """Clean selected area"""

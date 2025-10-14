@@ -1,0 +1,18 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "Configure Viomi Vacuum",
+                "description": "Enter connection details for your Viomi Vacuum.",
+                "data": {
+                    "host": "IP Address",
+                    "token": "Token",
+                    "name": "Device Name"
+                }
+            }
+        },
+        "error": {
+            "cannot_connect": "Failed to connect to the device. Check the IP and token."
+        }
+    }
+}

@@ -2,11 +2,11 @@
   "domain": "viomise",
   "name": "Viomi Robot Vacuum Cleaner SE (V-RVCLM21A)",
   "codeowners": ["@nqkdev", "@KrzysztofHajdamowicz", "@marotoweb"],
-  "config_flow": false,
-  "dependencies": [],
   "documentation": "https://github.com/marotoweb/home-assistant-vacuum-viomise",
-  "iot_class": "local_polling",
   "issue_tracker": "https://github.com/marotoweb/home-assistant-vacuum-viomise/issues",
-  "requirements": ["construct==2.10.70", "python-miio>=0.5.12"],
-  "version": "2025.10.13"
+  "requirements": ["construct==2.10.70", "python-miio>=0.6.0.dev0"],
+  "dependencies": [],
+  "config_flow": true,
+  "iot_class": "local_polling",
+  "version": "2025.10.14"
 }
