@@ -30,7 +30,11 @@ This integration communicates with the device locally, so it does not require a 
 
 ### How to get the device token?
 
-The easiest way to get the token is by using the [Xiaomi Miio](https://github.com/jgh/python-miio ) command-line tool.
+Note: Vacuum token can be extracted by following [this guide](https://www.home-assistant.io/integrations/xiaomi_miio/#retrieving-the-access-token).
+I recommend using the python script method to extract the token as it is simpler, and only requires you to enter your Xiaomi Cloud username and password.
+These are the credentials used for the Xiaomi Home app (_not ones from Viomi Robot app_).
+
+Another easiest way to get the token is by using the [Xiaomi Miio](https://github.com/jgh/python-miio ) command-line tool.
 
 ```bash
 # Install the tool
