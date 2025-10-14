@@ -9,57 +9,12 @@ Due to my lack of knowledge in python some things may not make sense or there is
 
 <img src="https://github.com/home-assistant/brands/raw/master/custom_integrations/viomise/logo.png" width=48%> 
 
-## Installation
+## Viomi SE Vacuum Integration
 
-### Using [HACS](https://hacs.xyz/) (recommended)
+This integration allows you to control your Viomi SE vacuum cleaner (`viomi.vacuum.v19`) locally.
 
-This integration can be added to HACS as a [custom repository](https://hacs.xyz/docs/faq/custom_repositories):
-* URL: `https://github.com/marotoweb/home-assistant-vacuum-viomise`
-* Category: `Integration`
+**Before you install:** Please make sure you have the IP address and the 32-character token of your vacuum.
 
-After adding a custom repository you can use HACS to install this integration using user interface.
+Configuration is done via the Home Assistant UI after installation.
 
-### Manual
-
-To install this integration manually you have to download following files:
-
-* [*README.md*](https://raw.githubusercontent.com/marotoweb/home-assistant-vacuum-viomise/master/custom_components/viomise/README.md)
-* [*__init__.py*](https://raw.githubusercontent.com/marotoweb/home-assistant-vacuum-viomise/master/custom_components/viomise/__init__.py)
-* [*vacuum.py*](https://raw.githubusercontent.com/marotoweb/home-assistant-vacuum-viomise/master/custom_components/viomise/vacuum.py)
-* [*manifest.json*](https://raw.githubusercontent.com/marotoweb/home-assistant-vacuum-viomise/master/custom_components/viomise/manifest.json)
-
-to `config/custom_components/viomise` directory:
-
-```bash
-mkdir -p custom_components/viomise
-cd custom_components/viomise
-wget https://raw.githubusercontent.com/marotoweb/home-assistant-vacuum-viomise/master/custom_components/viomise/README.md
-wget https://raw.githubusercontent.com/marotoweb/home-assistant-vacuum-viomise/master/custom_components/viomise/__init__.py
-wget https://raw.githubusercontent.com/marotoweb/home-assistant-vacuum-viomise/master/custom_components/viomise/vacuum.py
-wget https://raw.githubusercontent.com/marotoweb/home-assistant-vacuum-viomise/master/custom_components/viomise/manifest.json
-```
-
-or you can download [*latest release package*](https://github.com/marotoweb/home-assistant-vacuum-viomise/releases/latest/download/viomi_se.zip)
-
-```bash
-mkdir -p custom_components/viomise
-cd custom_components/viomise
-wget https://github.com/marotoweb/home-assistant-vacuum-viomise/releases/latest/download/viomi_se.zip
-unzip viomi_se.zip
-```
-
-## Configuration
-
-Add the configuration to `configuration.yaml` file, like the example below:
-
-```yaml
-vacuum:
-  - platform: viomise
-    host: 192.168.68.105
-    token: !secret vacuum
-    name: Viomi SE
-```
-Note: Vacuum token can be extracted by following [this guide](https://www.home-assistant.io/integrations/xiaomi_miio/#retrieving-the-access-token).
-I recommend using the python script method to extract the token as it is simpler, and only requires you to enter your Xiaomi Cloud username and password.
-These are the credentials used for the Xiaomi Home app (_not ones from Viomi Robot app_).
-
+For full installation and configuration details, please see the [main documentation on GitHub](https://github.com/marotoweb/home-assistant-vacuum-viomise ).
