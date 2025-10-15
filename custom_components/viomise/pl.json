@@ -1,0 +1,32 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Skonfiguruj odkurzacz Viomi",
+        "description": "Wprowadź adres IP i token swojego odkurzacza Viomi. Jeśli potrzebujesz pomocy w uzyskaniu tokena, zapoznaj się z dokumentacją integracji.",
+        "data": {
+          "host": "Adres IP (Host)",
+          "token": "Token"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Nie удалось połączyć się z odkurzaczem. Sprawdź adres IP i token, a także upewnij się, że urządzenie jest podłączone do sieci.",
+      "unknown": "Wystąpił nieoczekiwany błąd. Spróbuj ponownie."
+    },
+    "abort": {
+      "already_configured": "To urządzenie jest już skonfigurowane w Home Assistant."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opcje odkurzacza Viomi",
+        "description": "Dostosuj opcje integracji dla swojego odkurzacza.",
+        "data": {
+          "scan_interval": "Interwał aktualizacji (w sekundach)"
+        }
+      }
+    }
+  }
+}
