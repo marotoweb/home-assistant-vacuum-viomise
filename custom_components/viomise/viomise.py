@@ -1,5 +1,6 @@
 """
 The smart core for the Viomi v19 integration.
+
 This file contains the ViomiSE class, which handles all direct communication
 with the vacuum, state parsing, and business logic like auto-correcting the mop mode.
 """
@@ -88,21 +89,43 @@ class ViomiSE:
 
     def update(self):
         """
-        Fetch all properties from the device, update the internal state,
+        Fetch all properties from the device using raw_command, update the internal state,
         and perform smart logic like auto-correcting the mop mode.
         This is a blocking call.
         """
         try:
-            prop_names = [p["did"] for p in ALL_PROPS]
+            # This mapping structure is required for the 'get_properties' raw_command
+            mapping = [
+                {"did": p["did"], "siid": p["siid"], "piid": p["piid"]} for p in ALL_PROPS
+            ]
             
             # The device has a limit on how many properties can be fetched at once.
-            # We split the request into two parts.
-            props_part1 = self._device.get_properties(ALL_PROPS[:12])
-            props_part2 = self._device.get_properties(ALL_PROPS[12:])
+            # We split the request into two parts, using the original logic.
+            props_part1 = self._device.raw_command('get_properties', mapping[:12])
+            props_part2 = self._device.raw_command('get_properties', mapping[12:])
             
-            all_props_values = props_part1 + props_part2
-            
-            self.vacuum_state = dict(zip(prop_names, all_props_values))
+            properties = props_part1 + props_part2
+
+            # Process the response, which is a list of dictionaries.
+            # Create a dictionary of results for easy access, keyed by "siid-piid".
+            results_dict = {f"{p['siid']}-{p['piid']}": p for p in properties if 'siid' in p and 'piid' in p}
+
+            # Build the final state dictionary in the correct order, handling potential errors.
+            final_state = {}
+            for prop_def in ALL_PROPS:
+                key = f"{prop_def['siid']}-{prop_def['piid']}"
+                result_prop = results_dict.get(key)
+                
+                if result_prop and result_prop.get('code') == 0:
+                    final_state[prop_def['did']] = result_prop['value']
+                else:
+                    final_state[prop_def['did']] = None # Property could not be fetched
+                    _LOGGER.warning(
+                        "Failed to get property %s (siid: %s, piid: %s). Result: %s",
+                        prop_def['did'], prop_def['siid'], prop_def['piid'], result_prop
+                    )
+
+            self.vacuum_state = final_state
             _LOGGER.debug("State update for %s successful, raw state: %s", self.ip, self.vacuum_state)
 
             # --- Smart Mop Mode Correction Logic ---
@@ -134,6 +157,7 @@ class ViomiSE:
 
     # --- Getters for Home Assistant entity ---
     def get_state(self) -> str | None:
+        """Get the translated, human-readable state."""
         return STATE_MAPPING.get(self.vacuum_state.get("run_state"), "Unknown")
 
     def get_battery(self) -> int | None:
@@ -156,13 +180,11 @@ class ViomiSE:
     def find(self): self._device.send("find_device", [])
 
     def set_fan_speed(self, fan_speed_name: str):
+        """Set the fan speed by its name."""
         if (speed_code := FAN_SPEED_MAPPING_REVERSE.get(fan_speed_name)) is not None:
             self._device.send("set_suction", [speed_code])
 
     def send_command(self, command: str, params: List | Dict | None = None):
         """Wrapper for sending custom or specific commands."""
-        if command == "set_room_clean":
-            self._device.send("set_room_clean", params)
-        else:
-            self._device.send(command, params)
+        self._device.send(command, params)
 
