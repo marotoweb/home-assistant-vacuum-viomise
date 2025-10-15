@@ -1,0 +1,32 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configurer l'aspirateur Viomi",
+        "description": "Saisissez l'adresse IP et le jeton (token) de votre aspirateur Viomi. Si vous avez besoin d'aide pour obtenir le jeton, veuillez consulter la documentation de l'intégration.",
+        "data": {
+          "host": "Adresse IP (Hôte)",
+          "token": "Jeton (Token)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Impossible de se connecter à l'aspirateur. Vérifiez l'adresse IP et le jeton, et assurez-vous que l'appareil est connecté au réseau.",
+      "unknown": "Une erreur inattendue est survenue. Veuillez réessayer."
+    },
+    "abort": {
+      "already_configured": "Cet appareil est déjà configuré dans Home Assistant."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options de l'aspirateur Viomi",
+        "description": "Ajustez les options d'intégration pour votre aspirateur.",
+        "data": {
+          "scan_interval": "Intervalle de mise à jour (en secondes)"
+        }
+      }
+    }
+  }
+}
