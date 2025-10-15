@@ -46,7 +46,8 @@ class ViomiSEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return self.async_create_entry(title=user_input[CONF_HOST], data=user_input)
 
         # Mostra o formulário ao utilizador
-        return self.form(step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors)
+        return self.async_show_form(step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors)
+
 
     @staticmethod
     @callback
@@ -77,5 +78,5 @@ class ViomiSEOptionsFlowHandler(config_entries.OptionsFlow):
                 default=self.config_entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
             ): vol.All(vol.Coerce(int), vol.Range(min=5)),
         })
-        return self.form(step_id="init", data_schema=options_schema)
+        return self.async_show_form(step_id="init", data_schema=options_schema)
 
