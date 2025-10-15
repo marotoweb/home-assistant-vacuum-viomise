@@ -32,7 +32,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     try:
         # Usa a TUA classe especializada, que contém o "cérebro"
-        device = await hass.async_add_executor_job(ViomiSE, host, token)
+        device = ViomiSE(host, token)
+        await hass.async_add_executor_job(device.connect)
     except ViomiSEException as ex:
         # Usa uma exceção específica do HA para que ele tente novamente mais tarde
         raise ConfigEntryNotReady(f"Failed to initialize Viomi SE device at {host}: {ex}") from ex

@@ -11,7 +11,7 @@ from miio import Device, DeviceException
 _LOGGER = logging.getLogger(__name__)
 
 # Custom Exception for better error handling
-class ViomiSEException(DeviceException):
+class ViomiSEException(Exception):
     """Base exception for Viomi SE device errors."""
     pass
 
@@ -60,35 +60,50 @@ FAN_SPEED_MAPPING = {
 }
 FAN_SPEED_MAPPING_REVERSE = {v: k for k, v in FAN_SPEED_MAPPING.items()}
 
-
-class ViomiSE(Device):
+class ViomiSE:
     """
     Main class for handling communication with the Viomi v19 vacuum.
-    Inherits from miio.Device to handle the low-level communication protocol.
+    This class contains an instance of miio.Device and adds smart logic on top.
     """
-
     def __init__(self, ip: str, token: str):
-        """Initialize the device."""
-        super().__init__(ip, token)
+        """Initialize the device communication handler. No I/O is done here."""
+        _LOGGER.debug("Initializing ViomiSE handler for IP: %s", ip)
+        self.ip = ip
+        self.token = token
+        self._device = Device(ip, token)
         self.vacuum_state: Dict[str, Any] = {}
+
+    def connect(self) -> bool:
+        """
+        Establish connection to the device and get basic info.
+        This is a blocking call and should be run in an executor.
+        """
+        try:
+            self._device.info()
+            _LOGGER.debug("Successfully connected to device %s", self.ip)
+            return True
+        except DeviceException as e:
+            _LOGGER.error("Failed to connect to device %s: %s", self.ip, e)
+            raise ViomiSEException(f"Unable to connect to the device: {e}") from e
 
     def update(self):
         """
         Fetch all properties from the device, update the internal state,
         and perform smart logic like auto-correcting the mop mode.
-        This is the core logic of the integration.
+        This is a blocking call.
         """
         try:
+            prop_names = [p["did"] for p in ALL_PROPS]
+            
             # The device has a limit on how many properties can be fetched at once.
             # We split the request into two parts.
-            props_part1 = self.get_properties(ALL_PROPS[:12])
-            props_part2 = self.get_properties(ALL_PROPS[12:])
+            props_part1 = self._device.get_properties(ALL_PROPS[:12])
+            props_part2 = self._device.get_properties(ALL_PROPS[12:])
             
             all_props_values = props_part1 + props_part2
             
-            # Create a clean dictionary of {did: value}
-            prop_names = [p["did"] for p in ALL_PROPS]
             self.vacuum_state = dict(zip(prop_names, all_props_values))
+            _LOGGER.debug("State update for %s successful, raw state: %s", self.ip, self.vacuum_state)
 
             # --- Smart Mop Mode Correction Logic ---
             self._auto_correct_mop_mode()
@@ -97,16 +112,8 @@ class ViomiSE(Device):
             raise ViomiSEException(f"Error fetching device state: {exc}") from exc
 
     def _auto_correct_mop_mode(self):
-        """
-        Checks if the vacuum's cleaning mode is consistent with the installed
-        hardware (water tank, mop attachment) and corrects it if necessary.
-        """
-        if not self.vacuum_state:
-            return
-
-        run_state = self.vacuum_state.get("run_state")
-        # Only perform correction when the vacuum is docked to avoid interrupting a clean
-        if run_state != 4: # 4 = Charging
+        """Checks and corrects the vacuum's cleaning mode based on hardware status."""
+        if not self.vacuum_state or self.vacuum_state.get("run_state") != 4:
             return
 
         box_type = self.vacuum_state.get("box_type")
@@ -115,30 +122,19 @@ class ViomiSE(Device):
         
         # Determine the correct mode based on hardware
         correct_mop_mode = None
-        if box_type == 2 and mop_attached: # Water-only tank
-            correct_mop_mode = 2  # Mop Only
-        elif box_type == 3 and not mop_attached: # 2-in-1 tank, no mop
-            correct_mop_mode = 0  # Vacuum Only
-        elif box_type == 3 and mop_attached and current_mop_mode != 2: # 2-in-1 tank, with mop
-            correct_mop_mode = 1  # Vacuum & Mop
-        elif box_type == 1: # Dust-only tank
-            correct_mop_mode = 0  # Vacuum Only
+        if box_type == 2 and mop_attached: correct_mop_mode = 2
+        elif box_type == 3 and not mop_attached: correct_mop_mode = 0
+        elif box_type == 3 and mop_attached and current_mop_mode != 2: correct_mop_mode = 1
+        elif box_type == 1: correct_mop_mode = 0
 
         # If the current mode is incorrect, send a command to fix it
         if correct_mop_mode is not None and correct_mop_mode != current_mop_mode:
-            _LOGGER.info(
-                "Mop mode mismatch detected. Correcting from %s to %s.",
-                current_mop_mode, correct_mop_mode
-            )
-            self.send("set_mop", [correct_mop_mode])
-            # We don't call self.update() again here to avoid potential loops.
-            # The next scheduled update will fetch the corrected state.
+            _LOGGER.info("Mop mode mismatch. Correcting from %s to %s.", current_mop_mode, correct_mop_mode)
+            self._device.send("set_mop", [correct_mop_mode])
 
-    # --- Getter methods for the HA entity to consume ---
+    # --- Getters for Home Assistant entity ---
     def get_state(self) -> str | None:
-        """Get the translated, human-readable state."""
-        raw_state = self.vacuum_state.get("run_state")
-        return STATE_MAPPING.get(raw_state, "Unknown")
+        return STATE_MAPPING.get(self.vacuum_state.get("run_state"), "Unknown")
 
     def get_battery(self) -> int | None:
         """Get the battery level."""
@@ -146,45 +142,27 @@ class ViomiSE(Device):
 
     def get_fan_speed(self) -> str | None:
         """Get the translated, human-readable fan speed."""
-        raw_speed = self.vacuum_state.get("suction_grade")
-        return FAN_SPEED_MAPPING.get(raw_speed)
+        return FAN_SPEED_MAPPING.get(self.vacuum_state.get("suction_grade"))
 
     def fan_speeds(self) -> List[str]:
         """Return the list of supported fan speeds."""
         return list(FAN_SPEED_MAPPING.values())
 
-    # --- Command methods to be called by the HA entity ---
-    def start(self):
-        self.send("start_sweep", [])
-
-    def pause(self):
-        self.send("pause_sweeping", [])
-
-    def stop(self):
-        self.send("stop_sweeping", [])
-
-    def home(self):
-        self.send("start_charge", [])
-
-    def find(self):
-        self.send("find_device", [])
+    # --- Commands to be called by Home Assistant entity ---
+    def start(self): self._device.send("start_sweep", [])
+    def pause(self): self._device.send("pause_sweeping", [])
+    def stop(self): self._device.send("stop_sweeping", [])
+    def home(self): self._device.send("start_charge", [])
+    def find(self): self._device.send("find_device", [])
 
     def set_fan_speed(self, fan_speed_name: str):
-        speed_code = FAN_SPEED_MAPPING_REVERSE.get(fan_speed_name)
-        if speed_code is not None:
-            self.send("set_suction", [speed_code])
-
-    def set_room_clean(self, room_ids: List[int]):
-        """Example of a specific command."""
-        # Note: The spec shows 'set-room-clean' action takes multiple 'in' params.
-        # This might need adjustment based on how miio's 'send' handles it.
-        # For now, assuming a simple command structure.
-        self.send("set_room_clean", room_ids)
+        if (speed_code := FAN_SPEED_MAPPING_REVERSE.get(fan_speed_name)) is not None:
+            self._device.send("set_suction", [speed_code])
 
     def send_command(self, command: str, params: List | Dict | None = None):
         """Wrapper for sending custom or specific commands."""
         if command == "set_room_clean":
-            self.set_room_clean(params)
+            self._device.send("set_room_clean", params)
         else:
-            self.send(command, params)
+            self._device.send(command, params)
 

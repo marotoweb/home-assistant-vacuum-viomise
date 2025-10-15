@@ -15,13 +15,10 @@ from .viomise import ViomiSE, ViomiSEException
 _LOGGER = logging.getLogger(__name__)
 
 # Schema para o passo inicial de configuração (ConfigFlow)
-STEP_USER_DATA_SCHEMA = vol.Schema(
-    {
-        vol.Required(CONF_HOST): str,
-        vol.Required(CONF_TOKEN): str,
-    }
-)
-
+STEP_USER_DATA_SCHEMA = vol.Schema({
+    vol.Required(CONF_HOST): str,
+    vol.Required(CONF_TOKEN): str,
+})
 
 class ViomiSEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Viomi SE Vacuum."""
@@ -33,13 +30,12 @@ class ViomiSEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             try:
                 # Tenta inicializar a tua classe para validar a ligação
-                await self.hass.async_add_executor_job(
-                    ViomiSE, user_input[CONF_HOST], user_input[CONF_TOKEN]
-                )
+                viomi_device = ViomiSE(user_input[CONF_HOST], user_input[CONF_TOKEN])
+                await self.hass.async_add_executor_job(viomi_device.connect)
             except ViomiSEException:
                 errors["base"] = "cannot_connect"
             except Exception:
-                _LOGGER.exception("Unexpected exception")
+                _LOGGER.exception("Unexpected exception during config flow")
                 errors["base"] = "unknown"
             else:
                 # Define um unique_id para evitar duplicação
