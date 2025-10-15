@@ -2,46 +2,82 @@ name: Create and publish Release
 
 on:
   push:
-    # Sequence of patterns matched against refs/tags
     tags:
-      - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+      - 'v*'  # Apanha todas as tags que começam por "v"
 
 jobs:
   create_release_from_tag:
-    name: Create Release
+    name: Create GitHub Release
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+
+      - name: Extract version and prerelease info
+        id: version
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          echo "Tag: $TAG"
+
+          # Extrai apenas a versão (ex: v2025.10.15_V2beta1 → 2025.10.15_V2beta1)
+          VERSION="${TAG#v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          # Deteta se é uma pré-release (qualquer coisa depois de "_")
+          if [[ "$TAG" =~ _[Vv]?[0-9]*[AaBbRrCc]+[0-9]* ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update manifest version
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          echo "Updating manifest.json to version $VERSION"
+          sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" custom_components/viomise/manifest.json
+          cat custom_components/viomise/manifest.json
+
+      - name: Commit updated manifest
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add custom_components/viomise/manifest.json
+          git commit -m "Update manifest version to ${{ steps.version.outputs.version }}" || echo "No changes to commit"
+
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref }}
           release_name: Release ${{ github.ref }}
           body: |
-            This is an automated created release.
+            This is an automatically created release from tag ${{ github.ref }}.
           draft: false
-          prerelease: false
+          prerelease: ${{ steps.version.outputs.is_prerelease }}
 
   release_zip_file:
-    name: Prepare release asset
+    name: Upload release ZIP
     runs-on: ubuntu-latest
-    needs: [create_release_from_tag]
+    needs: create_release_from_tag
+
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v2
-      - name: ZIP files
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: ZIP component files
         run: |
-          cd /home/runner/work/home-assistant-vacuum-viomise/home-assistant-vacuum-viomise/custom_components/viomise
-          zip viomi_se.zip -r ./
+          cd custom_components/viomise
+          zip -r ../../viomi_se.zip .
+          ls -lh ../../viomi_se.zip
+
       - name: Upload zip to release
         uses: svenstaro/upload-release-action@v1-release
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: /home/runner/work/home-assistant-vacuum-viomise/home-assistant-vacuum-viomise/custom_components/viomise/viomi_se.zip
+          file: viomi_se.zip
           asset_name: viomi_se.zip
           tag: ${{ github.ref }}
           overwrite: true
