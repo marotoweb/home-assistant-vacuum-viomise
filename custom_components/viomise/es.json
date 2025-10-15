@@ -1,0 +1,32 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configurar Aspirador Viomi",
+        "description": "Introduce la dirección IP y el token de tu aspirador Viomi. Si necesitas ayuda para obtener el token, consulta la documentación de la integración.",
+        "data": {
+          "host": "Dirección IP (Host)",
+          "token": "Token"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "No se pudo conectar con el aspirador. Verifica la dirección IP y el token, y asegúrate de que el dispositivo está conectado a la red.",
+      "unknown": "Ocurrió un error inesperado. Por favor, inténtalo de nuevo."
+    },
+    "abort": {
+      "already_configured": "Este dispositivo ya está configurado en Home Assistant."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opciones del Aspirador Viomi",
+        "description": "Ajusta las opciones de la integración para tu aspirador.",
+        "data": {
+          "scan_interval": "Intervalo de Actualización (en segundos)"
+        }
+      }
+    }
+  }
+}
