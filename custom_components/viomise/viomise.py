@@ -16,9 +16,9 @@ class ViomiSEException(Exception):
     """Base exception for Viomi SE device errors."""
     pass
 
-# Mapping of all properties to be fetched from the device
-# Based on the official miot-spec-v2 for viomi.vacuum.v19
-# Each dict contains: did (local name), siid (Service ID), piid (Property ID)
+# Mapping of all properties to be fetched from the device.
+# Based on the official miot-spec-v2 for viomi.vacuum.v19.
+# Each dict contains: did (local name), siid (Service ID), piid (Property ID).
 ALL_PROPS = [
     {"did": "run_state", "siid": 2, "piid": 1},
     {"did": "err_state", "siid": 2, "piid": 2},
@@ -176,32 +176,53 @@ class ViomiSE:
         return list(FAN_SPEED_MAPPING.values())
 
     # --- Commands to be called by Home Assistant entity ---
-    # For this specific firmware, actions must be sent using raw_command
-    # with the correct service and action IDs (siid, aiid).
+
+    def _try_command(self, description: str, command: str, params: Any = None):
+        """
+        Try to send a command and ignore the expected timeout.
+        After sending, force a state update to get immediate feedback.
+        """
+        try:
+            _LOGGER.debug("Sending command '%s' with params: %s", description, params)
+            if command == "action":
+                self._device.raw_command(command, params)
+            else:
+                self._device.send(command, params)
+            _LOGGER.debug("Command '%s' sent, but no response is expected. Forcing update.", description)
+        except DeviceException as exc:
+            _LOGGER.warning(
+                "Got an expected timeout for command '%s'. "
+                "This is usually normal for this device model. Assuming success. Error: %s",
+                description, exc
+            )
+        finally:
+            # Whether the command timed out or not, we force an update
+            # to get the latest state immediately.
+            self.update()
+            return True
 
     def start(self):
         """Start cleaning."""
         # action: siid=2, aiid=1
-        return self._try_command("start_sweep", "action", {"did": "start-sweep", "siid": 2, "aiid": 1, "in": []})
+        return self._try_command("start-sweep", "action", {"did": "start-sweep", "siid": 2, "aiid": 1, "in": []})
 
     def pause(self):
         """Pause cleaning."""
         # action: siid=2, aiid=3
-        return self._try_command("pause_sweeping", "action", {"did": "pause-sweeping", "siid": 2, "aiid": 3, "in": []})
+        return self._try_command("pause-sweeping", "action", {"did": "pause-sweeping", "siid": 2, "aiid": 3, "in": []})
 
     def stop(self):
         """Stop cleaning."""
         # action: siid=2, aiid=2
-        return self._try_command("stop_sweeping", "action", {"did": "stop-sweeping", "siid": 2, "aiid": 2, "in": []})
+        return self._try_command("stop-sweeping", "action", {"did": "stop-sweeping", "siid": 2, "aiid": 2, "in": []})
 
     def home(self):
         """Return to base."""
         # action: siid=2, aiid=4
-        return self._try_command("return_to_base", "action", {"did": "return-to-base", "siid": 2, "aiid": 4, "in": []})
+        return self._try_command("return-to-base", "action", {"did": "return-to-base", "siid": 2, "aiid": 4, "in": []})
 
     def find(self):
         """Locate the vacuum."""
-        # The v19 spec does not have a standard 'find_device' action.
         # This is a common miio command that should make a sound.
         return self._try_command("find_device", "find_device", [])
 
@@ -209,20 +230,28 @@ class ViomiSE:
         """Set the fan speed by its name."""
         if (speed_code := FAN_SPEED_MAPPING_REVERSE.get(fan_speed_name)) is not None:
             # property: siid=2, piid=19
-            # This is a 'set_properties' call, which usually returns a result,
-            # so we don't use the _try_command wrapper here.
-            return self._device.raw_command(
-                "set_properties",
-                [{"did": "fan-speed", "siid": 2, "piid": 19, "value": speed_code}]
-            )
+            # This is a 'set_properties' call, which usually returns a result.
+            # We still wrap it in a try/finally to force an update for immediate UI feedback.
+            try:
+                return self._device.raw_command(
+                    "set_properties",
+                    [{"did": "fan-speed", "siid": 2, "piid": 19, "value": speed_code}]
+                )
+            finally:
+                self.update()
 
     def send_command(self, command: str, params: List | Dict | None = None):
         """
         Wrapper for sending raw miot spec commands.
-        This allows advanced users to call any action by its siid and aiid.
         """
         _LOGGER.debug("send_command called with: command=%s, params=%s", command, params)
-        # We wrap this in the timeout-ignoring helper as most custom commands will be actions.
-        return self._try_command(command, command, params)
-
+        if command == "action" and isinstance(params, dict):
+            return self._try_command(command, "action", params)
+        elif command == "set_properties" and isinstance(params, list):
+            try:
+                return self._device.raw_command("set_properties", params)
+            finally:
+                self.update()
+        else:
+            return self._try_command(command, command, params)
 
