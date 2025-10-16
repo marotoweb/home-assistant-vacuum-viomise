@@ -182,37 +182,35 @@ class ViomiSE:
     def start(self):
         """Start cleaning."""
         # action: siid=2, aiid=1
-        return self._device.raw_command("set_properties", [{"did": "start-sweep", "siid": 2, "piid": 1, "value": 0}])
+        return self._try_command("start_sweep", "action", {"did": "start-sweep", "siid": 2, "aiid": 1, "in": []})
 
     def pause(self):
         """Pause cleaning."""
-        # action: siid=2, aiid=2 (acts as pause)
-        return self._device.raw_command("set_properties", [{"did": "pause-sweeping", "siid": 2, "piid": 1, "value": 2}])
+        # action: siid=2, aiid=3
+        return self._try_command("pause_sweeping", "action", {"did": "pause-sweeping", "siid": 2, "aiid": 3, "in": []})
 
     def stop(self):
         """Stop cleaning."""
         # action: siid=2, aiid=2
-        return self._device.raw_command("set_properties", [{"did": "stop-sweeping", "siid": 2, "piid": 1, "value": 0}])
+        return self._try_command("stop_sweeping", "action", {"did": "stop-sweeping", "siid": 2, "aiid": 2, "in": []})
 
     def home(self):
         """Return to base."""
         # action: siid=2, aiid=4
-        return self._device.raw_command("action", {"did": "return-to-base", "siid": 2, "aiid": 4, "in": []})
+        return self._try_command("return_to_base", "action", {"did": "return-to-base", "siid": 2, "aiid": 4, "in": []})
 
     def find(self):
         """Locate the vacuum."""
         # The v19 spec does not have a standard 'find_device' action.
-        # This is a common workaround using the set_suction command which makes a sound.
-        current_fan_speed = self.vacuum_state.get("suction_grade", 1)
-        return self._device.raw_command(
-            "set_properties",
-            [{"did": "find-device-sound", "siid": 2, "piid": 19, "value": current_fan_speed}]
-        )
+        # This is a common miio command that should make a sound.
+        return self._try_command("find_device", "find_device", [])
 
     def set_fan_speed(self, fan_speed_name: str):
         """Set the fan speed by its name."""
         if (speed_code := FAN_SPEED_MAPPING_REVERSE.get(fan_speed_name)) is not None:
             # property: siid=2, piid=19
+            # This is a 'set_properties' call, which usually returns a result,
+            # so we don't use the _try_command wrapper here.
             return self._device.raw_command(
                 "set_properties",
                 [{"did": "fan-speed", "siid": 2, "piid": 19, "value": speed_code}]
@@ -221,12 +219,10 @@ class ViomiSE:
     def send_command(self, command: str, params: List | Dict | None = None):
         """
         Wrapper for sending raw miot spec commands.
+        This allows advanced users to call any action by its siid and aiid.
         """
-        if command == "action" and isinstance(params, dict):
-            return self._device.raw_command("action", params)
-        elif command == "set_properties" and isinstance(params, list):
-            return self._device.raw_command("set_properties", params)
-        else:
-            # Fallback to the generic send for other known commands
-            return self._device.send(command, params)
+        _LOGGER.debug("send_command called with: command=%s, params=%s", command, params)
+        # We wrap this in the timeout-ignoring helper as most custom commands will be actions.
+        return self._try_command(command, command, params)
+
 
