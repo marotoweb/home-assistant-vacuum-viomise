@@ -175,43 +175,44 @@ class ViomiSE:
         """Return the list of supported fan speeds."""
         return list(FAN_SPEED_MAPPING.values())
 
-        # --- Commands to be called by Home Assistant entity ---
+    # --- Commands to be called by Home Assistant entity ---
     # For this specific firmware, actions must be sent using raw_command
     # with the correct service and action IDs (siid, aiid).
 
     def start(self):
         """Start cleaning."""
-        # Corresponds to: service 2, action 1 (start-sweep)
-        return self._device.raw_command("action", {"did": "start-sweep", "siid": 2, "aiid": 1, "in": []})
+        # action: siid=2, aiid=1
+        return self._device.raw_command("set_properties", [{"did": "start-sweep", "siid": 2, "piid": 1, "value": 0}])
 
     def pause(self):
         """Pause cleaning."""
-        # Corresponds to: service 2, action 3 (pause)
-        # Note: The spec does not list a standard pause action. 'stop_sweeping' often acts as pause.
-        # If this doesn't work, we might need to find a different command.
-        return self._device.raw_command("action", {"did": "pause-sweeping", "siid": 2, "aiid": 2, "in": []})
+        # action: siid=2, aiid=2 (acts as pause)
+        return self._device.raw_command("set_properties", [{"did": "pause-sweeping", "siid": 2, "piid": 1, "value": 2}])
 
     def stop(self):
         """Stop cleaning."""
-        # Corresponds to: service 2, action 2 (stop-sweeping)
-        return self._device.raw_command("action", {"did": "stop-sweeping", "siid": 2, "aiid": 2, "in": []})
+        # action: siid=2, aiid=2
+        return self._device.raw_command("set_properties", [{"did": "stop-sweeping", "siid": 2, "piid": 1, "value": 0}])
 
     def home(self):
         """Return to base."""
-        # Corresponds to: service 2, action 4 (start-charge)
+        # action: siid=2, aiid=4
         return self._device.raw_command("action", {"did": "return-to-base", "siid": 2, "aiid": 4, "in": []})
 
     def find(self):
         """Locate the vacuum."""
         # The v19 spec does not have a standard 'find_device' action.
-        # We use a known miio command that works on many devices.
-        return self._device.send("find_device", [])
+        # This is a common workaround using the set_suction command which makes a sound.
+        current_fan_speed = self.vacuum_state.get("suction_grade", 1)
+        return self._device.raw_command(
+            "set_properties",
+            [{"did": "find-device-sound", "siid": 2, "piid": 19, "value": current_fan_speed}]
+        )
 
     def set_fan_speed(self, fan_speed_name: str):
         """Set the fan speed by its name."""
         if (speed_code := FAN_SPEED_MAPPING_REVERSE.get(fan_speed_name)) is not None:
-            # Setting a property works with set_properties
-            # Corresponds to: service 2, property 19 (mode)
+            # property: siid=2, piid=19
             return self._device.raw_command(
                 "set_properties",
                 [{"did": "fan-speed", "siid": 2, "piid": 19, "value": speed_code}]
@@ -219,24 +220,13 @@ class ViomiSE:
 
     def send_command(self, command: str, params: List | Dict | None = None):
         """
-        Wrapper for sending custom or specific commands.
-        This allows advanced users to call any action by its siid and aiid.
-        Example call from HA services:
-          service: vacuum.send_command
-          target:
-            entity_id: vacuum.my_viomi
-          data:
-            command: "action"
-            params:
-              siid: 4
-              aiid: 1
-              in: [1] # e.g. for set_repeat
+        Wrapper for sending raw miot spec commands.
         """
         if command == "action" and isinstance(params, dict):
-            # Allow calling any raw action
             return self._device.raw_command("action", params)
+        elif command == "set_properties" and isinstance(params, list):
+            return self._device.raw_command("set_properties", params)
         else:
-            # Fallback to the regular send for other commands
+            # Fallback to the generic send for other known commands
             return self._device.send(command, params)
-
 
