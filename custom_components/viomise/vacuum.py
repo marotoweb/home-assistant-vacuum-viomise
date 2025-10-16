@@ -50,6 +50,17 @@ class ViomiSEVacuum(StateVacuumEntity):
         return self._device.get_battery()
 
     @property
+    def fan_speed(self):
+        """Return the fan speed of the vacuum cleaner."""
+        if self.vacuum_state is not None:
+            speed = self.vacuum_state['suction_grade']
+            if speed in FAN_SPEEDS.values():
+                return [
+                    key for key,
+                    value in FAN_SPEEDS.items() if value == speed][0]
+            return speed
+
+    @property
     def fan_speed(self) -> str | None:
         """Return the current fan speed."""
         return self._device.get_fan_speed()
