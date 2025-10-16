@@ -153,7 +153,10 @@ class ViomiSE:
         # If the current mode is incorrect, send a command to fix it
         if correct_mop_mode is not None and correct_mop_mode != current_mop_mode:
             _LOGGER.info("Mop mode mismatch. Correcting from %s to %s.", current_mop_mode, correct_mop_mode)
-            self._device.send("set_mop", [correct_mop_mode])
+            self._device.raw_command(
+                "set_properties",
+                [{"did": "is_mop", "siid": 2, "piid": 11, "value": correct_mop_mode}]
+            )
 
     # --- Getters for Home Assistant entity ---
     def get_state(self) -> str | None:
@@ -172,19 +175,68 @@ class ViomiSE:
         """Return the list of supported fan speeds."""
         return list(FAN_SPEED_MAPPING.values())
 
-    # --- Commands to be called by Home Assistant entity ---
-    def start(self): self._device.send("start_sweep", [])
-    def pause(self): self._device.send("pause_sweeping", [])
-    def stop(self): self._device.send("stop_sweeping", [])
-    def home(self): self._device.send("start_charge", [])
-    def find(self): self._device.send("find_device", [])
+        # --- Commands to be called by Home Assistant entity ---
+    # For this specific firmware, actions must be sent using raw_command
+    # with the correct service and action IDs (siid, aiid).
+
+    def start(self):
+        """Start cleaning."""
+        # Corresponds to: service 2, action 1 (start-sweep)
+        return self._device.raw_command("action", {"did": "start-sweep", "siid": 2, "aiid": 1, "in": []})
+
+    def pause(self):
+        """Pause cleaning."""
+        # Corresponds to: service 2, action 3 (pause)
+        # Note: The spec does not list a standard pause action. 'stop_sweeping' often acts as pause.
+        # If this doesn't work, we might need to find a different command.
+        return self._device.raw_command("action", {"did": "pause-sweeping", "siid": 2, "aiid": 2, "in": []})
+
+    def stop(self):
+        """Stop cleaning."""
+        # Corresponds to: service 2, action 2 (stop-sweeping)
+        return self._device.raw_command("action", {"did": "stop-sweeping", "siid": 2, "aiid": 2, "in": []})
+
+    def home(self):
+        """Return to base."""
+        # Corresponds to: service 2, action 4 (start-charge)
+        return self._device.raw_command("action", {"did": "return-to-base", "siid": 2, "aiid": 4, "in": []})
+
+    def find(self):
+        """Locate the vacuum."""
+        # The v19 spec does not have a standard 'find_device' action.
+        # We use a known miio command that works on many devices.
+        return self._device.send("find_device", [])
 
     def set_fan_speed(self, fan_speed_name: str):
         """Set the fan speed by its name."""
         if (speed_code := FAN_SPEED_MAPPING_REVERSE.get(fan_speed_name)) is not None:
-            self._device.send("set_suction", [speed_code])
+            # Setting a property works with set_properties
+            # Corresponds to: service 2, property 19 (mode)
+            return self._device.raw_command(
+                "set_properties",
+                [{"did": "fan-speed", "siid": 2, "piid": 19, "value": speed_code}]
+            )
 
     def send_command(self, command: str, params: List | Dict | None = None):
-        """Wrapper for sending custom or specific commands."""
-        self._device.send(command, params)
+        """
+        Wrapper for sending custom or specific commands.
+        This allows advanced users to call any action by its siid and aiid.
+        Example call from HA services:
+          service: vacuum.send_command
+          target:
+            entity_id: vacuum.my_viomi
+          data:
+            command: "action"
+            params:
+              siid: 4
+              aiid: 1
+              in: [1] # e.g. for set_repeat
+        """
+        if command == "action" and isinstance(params, dict):
+            # Allow calling any raw action
+            return self._device.raw_command("action", params)
+        else:
+            # Fallback to the regular send for other commands
+            return self._device.send(command, params)
+
 
