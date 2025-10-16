@@ -79,15 +79,15 @@ class ViomiSEVacuum(StateVacuumEntity):
     async def async_return_to_base(self, **kwargs: Any) -> None:
         await self.hass.async_add_executor_job(self._device.home)
 
-    async def async_locate(self, **kwargs: Any) -> None:
-        await self.hass.async_add_executor_job(self._device.find)
-
     async def async_set_fan_speed(self, fan_speed: str, **kwargs: Any) -> None:
         await self.hass.async_add_executor_job(self._device.set_fan_speed, fan_speed)
 
     async def async_send_command(self, command: str, params: dict | list | None = None, **kwargs: Any) -> None:
         await self.hass.async_add_executor_job(self._device.send_command, command, params)
 
+    async def async_locate(self, **kwargs):
+        """Locate the vacuum cleaner."""
+        await self._try_command("Unable to locate the botvac: %s", self._vacuum.raw_command, 'set_resetpos', [1])
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     """Set up the vacuum platform."""
