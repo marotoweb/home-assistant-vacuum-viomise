@@ -1,12 +1,13 @@
 """
 Vacuum entity for the Viomi SE integration.
+
 This file defines the ViomiSEVacuum class, which is the Home Assistant
 entity that represents the vacuum cleaner. It communicates with the
 ViomiSE device handler (the "brain") to perform actions and report state.
 """
 import logging
 from datetime import timedelta
-from typing import Any
+from typing import Any, List
 
 import voluptuous as vol
 from homeassistant.components.vacuum import (
@@ -15,7 +16,7 @@ from homeassistant.components.vacuum import (
     VacuumActivity,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST
+from homeassistant.const import CONF_HOST, CONF_TOKEN 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback, async_get_current_platform
@@ -37,6 +38,15 @@ ATTR_ZONE_ARRAY = "zone"
 ATTR_ZONE_REPEATER = "repeats"
 ATTR_POINT = "point"
 
+SERVICE_SCHEMA_CLEAN_ZONE = {
+    vol.Required(ATTR_ZONE_ARRAY): vol.All(list, [vol.ExactSequence([vol.Coerce(float), vol.Coerce(float), vol.Coerce(float), vol.Coerce(float)])]),
+    vol.Optional(ATTR_ZONE_REPEATER, default=1): vol.All(vol.Coerce(int), vol.Clamp(min=1, max=3)),
+}
+SERVICE_SCHEMA_CLEAN_POINT = {
+    vol.Required(ATTR_POINT): vol.All(vol.ExactSequence([vol.Coerce(float), vol.Coerce(float)]))
+}
+
+# Mapping of state codes from the device to Home Assistant activities
 STATE_CODE_TO_ACTIVITY = {
     0: VacuumActivity.IDLE,      # Sleep
     1: VacuumActivity.IDLE,      # Idle
@@ -48,8 +58,12 @@ STATE_CODE_TO_ACTIVITY = {
     7: VacuumActivity.CLEANING   # Mop only
 }
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
-    """Set up the Viomi vacuum cleaner platform."""
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up the Viomi vacuum cleaner platform from a config entry."""
     host = entry.data[CONF_HOST]
     token = entry.data[CONF_TOKEN]
     
@@ -81,8 +95,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     async_add_entities([vacuum_entity])
 
     platform = async_get_current_platform()
-    platform.async_register_entity_service(SERVICE_CLEAN_ZONE, SERVICE_SCHEMA_CLEAN_ZONE, "async_clean_zone")
-    platform.async_register_entity_service(SERVICE_CLEAN_POINT, SERVICE_SCHEMA_CLEAN_POINT, "async_clean_point")
+    if platform:
+        platform.async_register_entity_service(SERVICE_CLEAN_ZONE, SERVICE_SCHEMA_CLEAN_ZONE, "async_clean_zone")
+        platform.async_register_entity_service(SERVICE_CLEAN_POINT, SERVICE_SCHEMA_CLEAN_POINT, "async_clean_point")
 
 
 class ViomiSEVacuum(CoordinatorEntity, StateVacuumEntity):
@@ -90,9 +105,16 @@ class ViomiSEVacuum(CoordinatorEntity, StateVacuumEntity):
 
     _attr_has_entity_name = True
 
-    def __init__(self, entry: ConfigEntry, device: ViomiSE, coordinator: DataUpdateCoordinator):
+    def __init__(
+        self,
+        entry: ConfigEntry,
+        device: ViomiSE,
+        coordinator: DataUpdateCoordinator,
+    ):
+        """Initialize the vacuum handler."""
         super().__init__(coordinator)
         self._device = device
+        
         self._attr_name = None
         self._attr_unique_id = entry.unique_id
         self._attr_device_info = DeviceInfo(
@@ -111,23 +133,27 @@ class ViomiSEVacuum(CoordinatorEntity, StateVacuumEntity):
         """Return the current state of the vacuum, mapped to HA activities."""
         state_code = self._device.get_state()
         if state_code is None:
-            return None
-        return STATE_CODE_TO_ACTIVITY.get(state_code)
+            return None # Or a default state like STATE_UNAVAILABLE
+        return STATE_CODE_TO_ACTIVITY.get(state_code, VacuumActivity.IDLE)
 
     @property
     def battery_level(self) -> int | None:
+        """Return the battery level of the vacuum cleaner."""
         return self._device.get_battery()
 
     @property
     def fan_speed(self) -> str | None:
+        """Return the fan speed of the vacuum cleaner."""
         return self._device.get_fan_speed()
 
     @property
     def fan_speed_list(self) -> list[str]:
+        """Get the list of available fan speed steps."""
         return self._device.fan_speeds()
 
     @property
     def supported_features(self) -> VacuumEntityFeature:
+        """Flag supported features."""
         return (
             VacuumEntityFeature.STATE | VacuumEntityFeature.PAUSE | VacuumEntityFeature.STOP |
             VacuumEntityFeature.RETURN_HOME | VacuumEntityFeature.BATTERY | VacuumEntityFeature.FAN_SPEED |
@@ -137,6 +163,7 @@ class ViomiSEVacuum(CoordinatorEntity, StateVacuumEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the specific state attributes of this vacuum cleaner."""
         return self._device.vacuum_state or {}
 
     # --- Command Methods ---
@@ -146,31 +173,33 @@ class ViomiSEVacuum(CoordinatorEntity, StateVacuumEntity):
         await self.hass.async_add_executor_job(command_func, *args)
         await self.coordinator.async_request_refresh()
 
-    async def async_start(self):
+    async def async_start(self) -> None:
         await self._execute_command(self._device.start)
 
-    async def async_pause(self):
+    async def async_pause(self) -> None:
         await self._execute_command(self._device.pause)
 
-    async def async_stop(self, **kwargs: Any):
+    async def async_stop(self, **kwargs: Any) -> None:
         await self._execute_command(self._device.stop)
 
-    async def async_return_to_base(self, **kwargs: Any):
+    async def async_return_to_base(self, **kwargs: Any) -> None:
         await self._execute_command(self._device.home)
 
-    async def async_locate(self, **kwargs: Any):
+    async def async_locate(self, **kwargs: Any) -> None:
         await self._execute_command(self._device.find)
 
-    async def async_set_fan_speed(self, fan_speed: str, **kwargs: Any):
+    async def async_set_fan_speed(self, fan_speed: str, **kwargs: Any) -> None:
         await self._execute_command(self._device.set_fan_speed, fan_speed)
 
-    async def async_send_command(self, command: str, params: dict | list | None = None, **kwargs: Any):
+    async def async_send_command(
+        self, command: str, params: dict | list | None = None, **kwargs: Any
+    ) -> None:
         await self._execute_command(self._device.send_command, command, params)
 
-    async def async_clean_zone(self, zone: list[list[float]], repeats: int = 1):
+    async def async_clean_zone(self, zone: list[list[float]], repeats: int = 1) -> None:
         await self._execute_command(self._device.clean_zone, zone, repeats)
 
-    async def async_clean_point(self, point: list[float]):
+    async def async_clean_point(self, point: list[float]) -> None:
         await self._execute_command(self._device.clean_point, point)
 
 
