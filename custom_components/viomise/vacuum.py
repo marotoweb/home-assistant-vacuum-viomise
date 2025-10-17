@@ -16,13 +16,14 @@ from homeassistant.components.vacuum import (
     VacuumActivity,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_TOKEN 
+from homeassistant.const import CONF_HOST, CONF_TOKEN
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback, async_get_current_platform
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
     DataUpdateCoordinator,
+    UpdateFailed,
 )
 from homeassistant.exceptions import ConfigEntryNotReady
 
@@ -80,11 +81,19 @@ async def async_setup_entry(
     scan_interval = timedelta(seconds=entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL))
 
     # Create the data update coordinator
+    async def async_update_data():
+        """Fetch data from the device."""
+        try:
+            # Run the synchronous update method in an executor
+            await hass.async_add_executor_job(viomi_device.update)
+        except ViomiSEException as ex:
+            raise UpdateFailed(f"Error communicating with API: {ex}") from ex
+
     coordinator = DataUpdateCoordinator(
         hass,
         _LOGGER,
         name=f"{entry.title} Updater",
-        update_method=viomi_device.update,
+        update_method=async_update_data, # Pass the new async wrapper function
         update_interval=scan_interval,
     )
 
@@ -121,7 +130,7 @@ class ViomiSEVacuum(CoordinatorEntity, StateVacuumEntity):
             identifiers={(DOMAIN, str(self.unique_id))},
             name=entry.title,
             manufacturer="Viomi",
-            model=device.info.model if device.info else "Viomi SE",
+            model=device.info.model if device.info and device.info.model else "Viomi SE",
             sw_version=device.info.firmware_version if device.info else "Unknown",
         )
 
@@ -133,8 +142,8 @@ class ViomiSEVacuum(CoordinatorEntity, StateVacuumEntity):
         """Return the current state of the vacuum, mapped to HA activities."""
         state_code = self._device.get_state()
         if state_code is None:
-            return None # Or a default state like STATE_UNAVAILABLE
-        return STATE_CODE_TO_ACTIVITY.get(state_code, VacuumActivity.IDLE)
+            return None
+        return STATE_CODE_TO_ACTIVITY.get(state_code)
 
     @property
     def battery_level(self) -> int | None:
