@@ -1,3 +1,5 @@
+# custom_components/viomise/__init__.py
+
 """The Viomi SE Vacuum integration."""
 from __future__ import annotations
 import logging
@@ -9,7 +11,7 @@ from homeassistant.core import HomeAssistant
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
-PLATFORMS: list[Platform] = [Platform.VACUUM]
+PLATFORMS: list[Platform] = [Platform.VACUUM, Platform.SENSOR]
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Viomi SE Vacuum from a config entry."""
