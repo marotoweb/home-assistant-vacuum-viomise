@@ -11,13 +11,14 @@ from homeassistant.components.vacuum import (
     DOMAIN as VACUUM_DOMAIN,
     StateVacuumEntity,
     VacuumEntityFeature,
+    # CORREÇÃO: Importar o VacuumActivity
+    VacuumActivity,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ENTITY_ID
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-# CORREÇÃO: A linha que faltava está aqui.
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
@@ -25,11 +26,23 @@ from .coordinator import ViomiSECoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-# --- CONSTANTES, SERVIÇOS E MAPEAMENTOS (EXATAMENTE OS SEUS) ---
+# --- CONSTANTES, SERVIÇOS E MAPEAMENTOS ---
 FAN_SPEEDS = {"Silent": 0, "Standard": 1, "Medium": 2, "Turbo": 3}
 FAN_SPEEDS_REVERSE = {v: k for k, v in FAN_SPEEDS.items()}
 SUPPORT_XIAOMI = (VacuumEntityFeature.PAUSE | VacuumEntityFeature.STOP | VacuumEntityFeature.RETURN_HOME | VacuumEntityFeature.FAN_SPEED | VacuumEntityFeature.LOCATE | VacuumEntityFeature.SEND_COMMAND | VacuumEntityFeature.BATTERY | VacuumEntityFeature.START | VacuumEntityFeature.STATE)
-STATE_CODE_TO_STATE = {0: "Idle", 1: "Idle", 2: "Paused", 3: "Returning", 4: "Docked", 5: "Cleaning", 6: "Cleaning", 7: "Cleaning"}
+
+# CORREÇÃO: Mapear para a enumeração VacuumActivity
+STATE_CODE_TO_ACTIVITY = {
+    0: VacuumActivity.IDLE,      # Idle
+    1: VacuumActivity.IDLE,      # Idle
+    2: VacuumActivity.PAUSED,    # Paused
+    3: VacuumActivity.RETURNING, # Go Charging
+    4: VacuumActivity.DOCKED,    # Charging
+    5: VacuumActivity.CLEANING,  # Vacuum
+    6: VacuumActivity.CLEANING,  # Vacuum & Mop
+    7: VacuumActivity.CLEANING   # Mop only
+}
+
 SERVICE_CLEAN_ZONE = "vacuum_clean_zone"; SERVICE_GOTO = "vacuum_goto"; SERVICE_CLEAN_SEGMENT = "vacuum_clean_segment"; SERVICE_CLEAN_POINT = "xiaomi_clean_point"
 ATTR_ZONE_ARRAY = "zone"; ATTR_ZONE_REPEATER = "repeats"; ATTR_X_COORD = "x_coord"; ATTR_Y_COORD = "y_coord"; ATTR_SEGMENTS = "segments"; ATTR_POINT = "point"
 VACUUM_SERVICE_SCHEMA = vol.Schema({vol.Optional(ATTR_ENTITY_ID): cv.entity_ids})
@@ -40,9 +53,7 @@ SERVICE_SCHEMA_CLEAN_POINT = VACUUM_SERVICE_SCHEMA.extend({vol.Required(ATTR_POI
 SERVICE_TO_METHOD = {SERVICE_CLEAN_ZONE: {"method": "async_clean_zone", "schema": SERVICE_SCHEMA_CLEAN_ZONE}, SERVICE_GOTO: {"method": "async_goto", "schema": SERVICE_SCHEMA_GOTO}, SERVICE_CLEAN_SEGMENT: {"method": "async_clean_segment", "schema": SERVICE_SCHEMA_CLEAN_SEGMENT}, SERVICE_CLEAN_POINT: {"method": "async_clean_point", "schema": SERVICE_SCHEMA_CLEAN_POINT}}
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
-    """Set up the Viomi vacuum platform from a config entry."""
     coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
-    
     mirobo = MiroboVacuum2(coordinator, entry)
     async_add_entities([mirobo], update_before_add=True)
     
@@ -52,18 +63,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         params = {key: value for key, value in service.data.items() if key != ATTR_ENTITY_ID}
         entity_ids = service.data.get(ATTR_ENTITY_ID)
         target_vacuums = [mirobo]
-        if entity_ids and mirobo.entity_id not in entity_ids:
-            return
+        if entity_ids and mirobo.entity_id not in entity_ids: return
         for vacuum in target_vacuums:
             await getattr(vacuum, method_def["method"])(**params)
 
     for service_name, service_def in SERVICE_TO_METHOD.items():
-        hass.services.async_register(
-            VACUUM_DOMAIN, 
-            service_name, 
-            async_service_handler, 
-            schema=service_def.get("schema", VACUUM_SERVICE_SCHEMA)
-        )
+        hass.services.async_register(VACUUM_DOMAIN, service_name, async_service_handler, schema=service_def.get("schema", VACUUM_SERVICE_SCHEMA))
 
 class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
     _attr_has_entity_name = True
@@ -76,10 +81,17 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
         self._last_clean_point = None
         self._attr_device_info = {"identifiers": {(DOMAIN, self.unique_id)}, "name": config_entry.title, "manufacturer": "Viomi", "model": "V-RVCLM21A (SE)"}
 
+    # CORREÇÃO: Remover a propriedade 'state'
+    # @property
+    # def state(self): ...
+
+    # CORREÇÃO: Adicionar a propriedade 'activity'
     @property
-    def state(self):
+    def activity(self) -> VacuumActivity | None:
+        """Return the current vacuum activity."""
         if self.coordinator.data:
-            return STATE_CODE_TO_STATE.get(self.coordinator.data.get("run_state"))
+            state_code = self.coordinator.data.get("run_state")
+            return STATE_CODE_TO_ACTIVITY.get(state_code)
         return None
 
     @property
@@ -107,6 +119,7 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
     def supported_features(self):
         return SUPPORT_XIAOMI
 
+    # O resto da classe (todos os métodos async_...) permanece exatamente igual.
     async def _try_command(self, mask_error, func, *args, **kwargs):
         try:
             await self.hass.async_add_executor_job(partial(func, *args, **kwargs))
