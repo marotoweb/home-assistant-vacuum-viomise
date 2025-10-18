@@ -3,7 +3,6 @@
 import asyncio
 import logging
 from functools import partial
-import time
 
 import voluptuous as vol
 from miio import DeviceException, ViomiVacuum
@@ -16,7 +15,7 @@ from homeassistant.components.vacuum import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ENTITY_ID
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -74,7 +73,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         hass.services.async_register(VACUUM_DOMAIN, service_name, async_service_handler, schema=service_def.get("schema", VACUUM_SERVICE_SCHEMA))
 
 class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
-    _attr_assumed_state = True
     _attr_has_entity_name = True
     _attr_name = None
 
@@ -84,22 +82,7 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
         self._attr_unique_id = config_entry.unique_id
         self._last_clean_point = None
         self._attr_device_info = {"identifiers": {(DOMAIN, self.unique_id)}, "name": config_entry.title, "manufacturer": "Viomi", "model": "V-RVCLM21A (SE)"}
-        # Adicionar um atributo local para a velocidade da ventoinha
-        self._current_fan_speed = None
-        # Guardar o tempo do último comando otimista
-        self._last_optimistic_update = 0
 
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
-        # Só aceitar a atualização do coordinator se não tivermos feito uma atualização otimista nos últimos 10 segundos.
-        if time.time() - self._last_optimistic_update < 10:
-            return
-
-        if self.coordinator.data:
-            speed = self.coordinator.data.get("suction_grade")
-            self._current_fan_speed = FAN_SPEEDS_REVERSE.get(speed, speed)
-        super()._handle_coordinator_update()
 
     # Adicionar a propriedade 'activity'
     @property
@@ -112,8 +95,9 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
 
     @property
     def fan_speed(self):
-        # Devolver o nosso estado local otimista
-        return self._current_fan_speed
+        if self.coordinator.data:
+            speed = self.coordinator.data.get("suction_grade")
+            return FAN_SPEEDS_REVERSE.get(speed, speed)
 
     @property
     def fan_speed_list(self):
@@ -131,28 +115,12 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
 
     async def _try_command(self, mask_error, func, *args, **kwargs):
         try:
-            # Evitar flood, não pedimos mais refresh imediato aqui, deixamos o ciclo normal tratar disso
             await self.hass.async_add_executor_job(partial(func, *args, **kwargs))
+            await self.coordinator.async_request_refresh()
             return True
         except DeviceException as exc:
             _LOGGER.error(mask_error, exc)
             return False
-
-    async def async_set_fan_speed(self, fan_speed, **kwargs):
-        """Set fan speed with optimistic update."""
-        speed_value = FAN_SPEEDS.get(fan_speed.capitalize())
-        if speed_value is None:
-            _LOGGER.error("Invalid fan speed: %s", fan_speed)
-            return
-        
-        # Atualizar o estado local otimista PRIMEIRO
-        self._current_fan_speed = fan_speed
-        # Registar o tempo do nosso comando otimista
-        self._last_optimistic_update = time.time()
-        self.async_write_ha_state()
-
-        # Depois, enviar o comando para o aspirador
-        await self._try_command("Unable to set fan speed", self._vacuum.raw_command, 'set_suction', [speed_value])
 
     async def async_start(self):
         state = self.coordinator.data;
@@ -188,6 +156,11 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
             self._last_clean_point = None
         else: method, param = 'set_mode', [0]
         await self._try_command("Unable to stop", self._vacuum.raw_command, method, param)
+
+    async def async_set_fan_speed(self, fan_speed, **kwargs):
+        speed_value = FAN_SPEEDS.get(fan_speed.capitalize())
+        if speed_value is None: _LOGGER.error("Invalid fan speed: %s", fan_speed); return
+        await self._try_command("Unable to set fan speed", self._vacuum.raw_command, 'set_suction', [speed_value])
 
     async def async_return_to_base(self, **kwargs):
         await self._try_command("Unable to return home", self._vacuum.raw_command, 'set_charge', [1])
