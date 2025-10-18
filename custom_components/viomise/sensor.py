@@ -18,11 +18,12 @@ from .coordinator import ViomiSECoordinator
 _LOGGER = logging.getLogger(__name__)
 
 # Describes the sensors that will be created.
+# CORREÇÃO: Renomeado 'native_unit_of_measurement' para 'unit_of_measurement'
 SENSOR_DESCRIPTIONS: tuple[EntityDescription, ...] = (
-    EntityDescription(key="main_brush_left", name="Main Brush Life", icon="mdi:brush", native_unit_of_measurement=PERCENTAGE, state_class=SensorStateClass.MEASUREMENT, entity_category=EntityCategory.DIAGNOSTIC),
-    EntityDescription(key="side_brush_left", name="Side Brush Life", icon="mdi:brush-off", native_unit_of_measurement=PERCENTAGE, state_class=SensorStateClass.MEASUREMENT, entity_category=EntityCategory.DIAGNOSTIC),
-    EntityDescription(key="filter_left", name="Filter Life", icon="mdi:air-filter", native_unit_of_measurement=PERCENTAGE, state_class=SensorStateClass.MEASUREMENT, entity_category=EntityCategory.DIAGNOSTIC),
-    EntityDescription(key="mop_left", name="Mop Life", icon="mdi:hydro-power", native_unit_of_measurement=PERCENTAGE, state_class=SensorStateClass.MEASUREMENT, entity_category=EntityCategory.DIAGNOSTIC),
+    EntityDescription(key="main_brush_left", name="Main Brush Life", icon="mdi:brush", unit_of_measurement=PERCENTAGE, state_class=SensorStateClass.MEASUREMENT, entity_category=EntityCategory.DIAGNOSTIC),
+    EntityDescription(key="side_brush_left", name="Side Brush Life", icon="mdi:brush-off", unit_of_measurement=PERCENTAGE, state_class=SensorStateClass.MEASUREMENT, entity_category=EntityCategory.DIAGNOSTIC),
+    EntityDescription(key="filter_left", name="Filter Life", icon="mdi:air-filter", unit_of_measurement=PERCENTAGE, state_class=SensorStateClass.MEASUREMENT, entity_category=EntityCategory.DIAGNOSTIC),
+    EntityDescription(key="mop_left", name="Mop Life", icon="mdi:hydro-power", unit_of_measurement=PERCENTAGE, state_class=SensorStateClass.MEASUREMENT, entity_category=EntityCategory.DIAGNOSTIC),
 )
 # Map key to data index from coordinator
 SENSOR_DATA_INDEX = {"main_brush_left": 5, "side_brush_left": 6, "filter_left": 7, "mop_left": 8}
@@ -44,6 +45,10 @@ class ViomiSEConsumableSensor(CoordinatorEntity[ViomiSECoordinator], SensorEntit
         super().__init__(coordinator)
         self.entity_description = description
         self._attr_unique_id = f"{config_entry.unique_id}_{description.key}"
+        
+        # O 'unit_of_measurement' é agora definido através da EntityDescription
+        # e não precisa de ser definido manualmente aqui.
+        
         self._attr_device_info = {"identifiers": {(DOMAIN, config_entry.unique_id)}}
         
     @callback
@@ -53,3 +58,4 @@ class ViomiSEConsumableSensor(CoordinatorEntity[ViomiSECoordinator], SensorEntit
             data_index = SENSOR_DATA_INDEX[self.entity_description.key]
             self._attr_native_value = self.coordinator.data[data_index]
             self.async_write_ha_state()
+
