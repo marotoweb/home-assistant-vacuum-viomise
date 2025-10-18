@@ -17,7 +17,7 @@ from .coordinator import ViomiSECoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-# Mappings from device values to Home Assistant states
+# Mappings
 STATE_CODE_TO_STATE = {0: "Idle", 1: "Idle", 2: "Paused", 3: "Cleaning", 4: "Returning", 5: "Docked", 6: "Mopping"}
 FAN_SPEEDS = {"Silent": 0, "Standard": 1, "Medium": 2, "Turbo": 3}
 FAN_SPEEDS_REVERSE = {v: k for k, v in FAN_SPEEDS.items()}
@@ -25,7 +25,7 @@ WATER_LEVELS = {"Low": 11, "Medium": 12, "High": 13}
 WATER_LEVELS_REVERSE = {v: k for k, v in WATER_LEVELS.items()}
 MOP_PATTERNS = {"Standard": 0, "Y-type": 1}
 MOP_PATTERNS_REVERSE = {v: k for k, v in MOP_PATTERNS.items()}
-CONSUMABLES = {"main_brush": 5, "side_brush": 6, "filter": 7, "mop": 8} # Map consumable name to siid
+CONSUMABLES = {"main_brush": 5, "side_brush": 6, "filter": 7, "mop": 8}
 
 # Supported features
 SUPPORT_VIOMISE = (
@@ -51,7 +51,7 @@ class ViomiSE(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
     """Representation of a Viomi SE (v19) Vacuum cleaner."""
     _attr_should_poll = False
     _attr_has_entity_name = True
-    _attr_name = None # Name is inherited from the device
+    _attr_name = None
 
     def __init__(self, coordinator: ViomiSECoordinator, config_entry: ConfigEntry):
         """Initialize the Viomi SE vacuum cleaner."""
@@ -74,15 +74,18 @@ class ViomiSE(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
         if not self.coordinator.data:
+            self._attr_available = False
+            self.async_write_ha_state()
             return
 
+        self._attr_available = True
         data = self.coordinator.data
         self._attr_battery_level = data[0]
         self._attr_state = STATE_CODE_TO_STATE.get(data[1], "Unknown")
         self._attr_fan_speed = FAN_SPEEDS_REVERSE.get(data[2])
         
         self._extra_attributes = {
-            "cleaning_time": str(timedelta(seconds=data[3])),
+            "cleaning_time": str(timedelta(seconds=data[3] or 0)),
             "cleaned_area": data[4],
             "main_brush_left": data[5],
             "side_brush_left": data[6],
@@ -99,31 +102,30 @@ class ViomiSE(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
         return self._extra_attributes
 
     # --- Control Methods ---
-    async def async_start(self):
-        await self.hass.async_add_executor_job(self._device.send, "action", {"did": "start_clean", "siid": 2, "aiid": 1, "in": []})
-    async def async_pause(self):
-        await self.hass.async_add_executor_job(self._device.send, "action", {"did": "pause_clean", "siid": 2, "aiid": 2, "in": []})
-    async def async_stop(self, **kwargs):
-        await self.async_pause()
-    async def async_return_to_base(self, **kwargs):
-        await self.hass.async_add_executor_job(self._device.send, "action", {"did": "return_home", "siid": 3, "aiid": 1, "in": []})
-    async def async_locate(self, **kwargs):
-        await self.hass.async_add_executor_job(self._device.send, "set_properties", [{"did": "find_me", "siid": 10, "piid": 1, "value": 1}])
-    async def async_clean_spot(self, **kwargs):
-        _LOGGER.warning("Spot clean is experimental.")
-        await self.hass.async_add_executor_job(self._device.send, "set_properties", [{"did": "spot_clean", "siid": 2, "piid": 1, "value": 2}])
-    async def async_set_fan_speed(self, fan_speed: str, **kwargs):
-        if (speed_value := FAN_SPEEDS.get(fan_speed)) is not None:
-            await self.hass.async_add_executor_job(self._device.send, "set_properties", [{"did": "fan_speed", "siid": 2, "piid": 2, "value": speed_value}])
-    async def async_send_command(self, command: str, params: dict | list = None, **kwargs):
-        await self.hass.async_add_executor_job(self._device.send, command, params)
-
-    # --- Custom Service Methods ---
     async def _execute_and_refresh(self, method, *args):
-        """Execute a command and then trigger a coordinator refresh."""
         await self.hass.async_add_executor_job(method, *args)
         await self.coordinator.async_request_refresh()
 
+    async def async_start(self):
+        await self._execute_and_refresh(self._device.send, "action", {"did": "start_clean", "siid": 2, "aiid": 1, "in": []})
+    async def async_pause(self):
+        await self._execute_and_refresh(self._device.send, "action", {"did": "pause_clean", "siid": 2, "aiid": 2, "in": []})
+    async def async_stop(self, **kwargs):
+        await self.async_pause()
+    async def async_return_to_base(self, **kwargs):
+        await self._execute_and_refresh(self._device.send, "action", {"did": "return_home", "siid": 3, "aiid": 1, "in": []})
+    async def async_locate(self, **kwargs):
+        await self._execute_and_refresh(self._device.send, "set_properties", [{"did": "find_me", "siid": 10, "piid": 1, "value": 1}])
+    async def async_clean_spot(self, **kwargs):
+        _LOGGER.warning("Spot clean is experimental.")
+        await self._execute_and_refresh(self._device.send, "set_properties", [{"did": "spot_clean", "siid": 2, "piid": 1, "value": 2}])
+    async def async_set_fan_speed(self, fan_speed: str, **kwargs):
+        if (speed_value := FAN_SPEEDS.get(fan_speed)) is not None:
+            await self._execute_and_refresh(self._device.send, "set_properties", [{"did": "fan_speed", "siid": 2, "piid": 2, "value": speed_value}])
+    async def async_send_command(self, command: str, params: dict | list = None, **kwargs):
+        await self._execute_and_refresh(self._device.send, command, params)
+
+    # --- Custom Service Methods ---
     async def async_set_water_level(self, water_level: str):
         if (level_value := WATER_LEVELS.get(water_level)) is not None:
             await self._execute_and_refresh(self._device.send, "set_properties", [{"did": "water_level", "siid": 2, "piid": 5, "value": level_value}])
@@ -134,19 +136,29 @@ class ViomiSE(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
         if (siid := CONSUMABLES.get(consumable)) is not None:
             await self._execute_and_refresh(self._device.send, "set_properties", [{"did": f"reset_{consumable}", "siid": siid, "piid": 1, "value": 100}])
 
+    # CORREÇÃO: Revertido para o método de registo de serviço mais compatível.
     async def async_added_to_hass(self) -> None:
         """Run when entity is added to hass, and register services."""
         await super().async_added_to_hass()
         
-        platform = self.platform.async_get_integration_platform(DOMAIN)
-        
-        # Register services
-        platform.async_register_entity_service(
-            "set_water_level", SERVICE_SET_WATER_LEVEL_SCHEMA, self.async_set_water_level
+        @callback
+        def _async_handle_service(service_call: ServiceCall, method):
+            """Helper to handle service calls."""
+            # Filtra para garantir que o serviço é para esta entidade específica
+            if service_call.data.get("entity_id") != self.entity_id:
+                return
+            
+            # Remove entity_id dos dados antes de passar para o método
+            params = {key: value for key, value in service_call.data.items() if key != "entity_id"}
+            self.hass.async_create_task(method(**params))
+
+        self.hass.services.async_register(
+            DOMAIN, "set_water_level", lambda call: _async_handle_service(call, self.async_set_water_level), schema=SERVICE_SET_WATER_LEVEL_SCHEMA
         )
-        platform.async_register_entity_service(
-            "set_mop_pattern", SERVICE_SET_MOP_PATTERN_SCHEMA, self.async_set_mop_pattern
+        self.hass.services.async_register(
+            DOMAIN, "set_mop_pattern", lambda call: _async_handle_service(call, self.async_set_mop_pattern), schema=SERVICE_SET_MOP_PATTERN_SCHEMA
         )
-        platform.async_register_entity_service(
-            "reset_consumable", SERVICE_RESET_CONSUMABLE_SCHEMA, self.async_reset_consumable
+        self.hass.services.async_register(
+            DOMAIN, "reset_consumable", lambda call: _async_handle_service(call, self.async_reset_consumable), schema=SERVICE_RESET_CONSUMABLE_SCHEMA
         )
+
