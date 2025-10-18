@@ -1,6 +1,5 @@
-# custom_components/viomise/vacuum.py
 # -*- coding: utf-8 -*-
-"""Custom Component for Viomi Vacuum in Home Assistant, adapted for Config Flow."""
+"""Custom Component para Viomi Vacuum no Home Assistant, fiel ao original."""
 import asyncio
 import logging
 from functools import partial
@@ -14,45 +13,29 @@ from homeassistant.components.vacuum import (
     VacuumEntityFeature,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import ATTR_ENTITY_ID
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.const import ATTR_ENTITY_ID, CONF_HOST, CONF_NAME, CONF_TOKEN
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import ViomiSECoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-# --- SERVICES (from your original code) ---
-SERVICE_CLEAN_ZONE = "vacuum_clean_zone"
-SERVICE_GOTO = "vacuum_goto"
-SERVICE_CLEAN_SEGMENT = "vacuum_clean_segment"
-SERVICE_CLEAN_POINT = "xiaomi_clean_point" # Legacy name for compatibility
-ATTR_ZONE_ARRAY = "zone"
-ATTR_ZONE_REPEATER = "repeats"
-ATTR_X_COORD = "x_coord"
-ATTR_Y_COORD = "y_coord"
-ATTR_SEGMENTS = "segments"
-ATTR_POINT = "point"
+# --- CONSTANTES, SERVIÇOS E MAPEAMENTOS (EXATAMENTE OS SEUS) ---
+FAN_SPEEDS = {"Silent": 0, "Standard": 1, "Medium": 2, "Turbo": 3}
+FAN_SPEEDS_REVERSE = {v: k for k, v in FAN_SPEEDS.items()}
+SUPPORT_XIAOMI = (VacuumEntityFeature.PAUSE | VacuumEntityFeature.STOP | VacuumEntityFeature.RETURN_HOME | VacuumEntityFeature.FAN_SPEED | VacuumEntityFeature.LOCATE | VacuumEntityFeature.SEND_COMMAND | VacuumEntityFeature.BATTERY | VacuumEntityFeature.START | VacuumEntityFeature.STATE)
+STATE_CODE_TO_STATE = {0: "Idle", 1: "Idle", 2: "Paused", 3: "Returning", 4: "Docked", 5: "Cleaning", 6: "Cleaning", 7: "Cleaning"}
+SERVICE_CLEAN_ZONE = "vacuum_clean_zone"; SERVICE_GOTO = "vacuum_goto"; SERVICE_CLEAN_SEGMENT = "vacuum_clean_segment"; SERVICE_CLEAN_POINT = "xiaomi_clean_point"
+ATTR_ZONE_ARRAY = "zone"; ATTR_ZONE_REPEATER = "repeats"; ATTR_X_COORD = "x_coord"; ATTR_Y_COORD = "y_coord"; ATTR_SEGMENTS = "segments"; ATTR_POINT = "point"
 VACUUM_SERVICE_SCHEMA = vol.Schema({vol.Optional(ATTR_ENTITY_ID): cv.entity_ids})
 SERVICE_SCHEMA_CLEAN_ZONE = VACUUM_SERVICE_SCHEMA.extend({vol.Required(ATTR_ZONE_ARRAY): vol.All(list, [vol.ExactSequence([vol.Coerce(float), vol.Coerce(float), vol.Coerce(float), vol.Coerce(float)])]), vol.Required(ATTR_ZONE_REPEATER): vol.All(vol.Coerce(int), vol.Clamp(min=1, max=3))})
 SERVICE_SCHEMA_GOTO = VACUUM_SERVICE_SCHEMA.extend({vol.Required(ATTR_X_COORD): vol.Coerce(float), vol.Required(ATTR_Y_COORD): vol.Coerce(float)})
 SERVICE_SCHEMA_CLEAN_SEGMENT = VACUUM_SERVICE_SCHEMA.extend({vol.Required(ATTR_SEGMENTS): vol.Any(vol.Coerce(int), [vol.Coerce(int)])})
 SERVICE_SCHEMA_CLEAN_POINT = VACUUM_SERVICE_SCHEMA.extend({vol.Required(ATTR_POINT): vol.All(vol.ExactSequence([vol.Coerce(float), vol.Coerce(float)]))})
-SERVICE_TO_METHOD = {
-    SERVICE_CLEAN_ZONE: {"method": "async_clean_zone", "schema": SERVICE_SCHEMA_CLEAN_ZONE},
-    SERVICE_GOTO: {"method": "async_goto", "schema": SERVICE_SCHEMA_GOTO},
-    SERVICE_CLEAN_SEGMENT: {"method": "async_clean_segment", "schema": SERVICE_SCHEMA_CLEAN_SEGMENT},
-    SERVICE_CLEAN_POINT: {"method": "async_clean_point", "schema": SERVICE_SCHEMA_CLEAN_POINT},
-}
-
-# --- CONSTANTS (from your original code) ---
-FAN_SPEEDS = {"Silent": 0, "Standard": 1, "Medium": 2, "Turbo": 3}
-FAN_SPEEDS_REVERSE = {v: k for k, v in FAN_SPEEDS.items()}
-SUPPORT_XIAOMI = (VacuumEntityFeature.PAUSE | VacuumEntityFeature.STOP | VacuumEntityFeature.RETURN_HOME | VacuumEntityFeature.FAN_SPEED | VacuumEntityFeature.LOCATE | VacuumEntityFeature.SEND_COMMAND | VacuumEntityFeature.BATTERY | VacuumEntityFeature.START | VacuumEntityFeature.STATE)
-STATE_CODE_TO_STATE = {0: "Idle", 1: "Idle", 2: "Paused", 3: "Returning", 4: "Docked", 5: "Cleaning", 6: "Cleaning", 7: "Cleaning"}
+SERVICE_TO_METHOD = {SERVICE_CLEAN_ZONE: {"method": "async_clean_zone", "schema": SERVICE_SCHEMA_CLEAN_ZONE}, SERVICE_GOTO: {"method": "async_goto", "schema": SERVICE_SCHEMA_GOTO}, SERVICE_CLEAN_SEGMENT: {"method": "async_clean_segment", "schema": SERVICE_SCHEMA_CLEAN_SEGMENT}, SERVICE_CLEAN_POINT: {"method": "async_clean_point", "schema": SERVICE_SCHEMA_CLEAN_POINT}}
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
     """Set up the Viomi vacuum platform from a config entry."""
@@ -61,11 +44,27 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     mirobo = MiroboVacuum2(coordinator, entry)
     async_add_entities([mirobo], update_before_add=True)
     
-    # Register services to the platform
-    platform = hass.helpers.entity_platform.async_get_current_platform()
-    for service_name, details in SERVICE_TO_METHOD.items():
-        platform.async_register_entity_service(
-            service_name, details["schema"], details["method"]
+    # CORREÇÃO: Reverter para a forma original e compatível de registar serviços.
+    async def async_service_handler(service):
+        method_def = SERVICE_TO_METHOD.get(service.service)
+        if not method_def: return
+
+        params = {key: value for key, value in service.data.items() if key != ATTR_ENTITY_ID}
+        entity_ids = service.data.get(ATTR_ENTITY_ID)
+        
+        target_vacuums = [mirobo] # Simplificado para a entidade atual
+        if entity_ids and mirobo.entity_id not in entity_ids:
+            return
+
+        for vacuum in target_vacuums:
+            await getattr(vacuum, method_def["method"])(**params)
+
+    for service_name, service_def in SERVICE_TO_METHOD.items():
+        hass.services.async_register(
+            VACUUM_DOMAIN, 
+            service_name, 
+            async_service_handler, 
+            schema=service_def.get("schema", VACUUM_SERVICE_SCHEMA)
         )
 
 class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
@@ -79,18 +78,12 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
         self._vacuum = coordinator.vacuum
         self._attr_unique_id = config_entry.unique_id
         self._last_clean_point = None
-        
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, self.unique_id)},
-            "name": config_entry.title,
-            "manufacturer": "Viomi",
-            "model": "V-RVCLM21A (SE)",
-        }
+        self._attr_device_info = {"identifiers": {(DOMAIN, self.unique_id)}, "name": config_entry.title, "manufacturer": "Viomi", "model": "V-RVCLM21A (SE)"}
 
     @property
     def state(self):
-        if self.coordinator.data and "run_state" in self.coordinator.data:
-            return STATE_CODE_TO_STATE.get(self.coordinator.data["run_state"])
+        if self.coordinator.data:
+            return STATE_CODE_TO_STATE.get(self.coordinator.data.get("run_state"))
         return None
 
     @property
@@ -128,15 +121,12 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
             _LOGGER.error(mask_error, exc)
             return False
 
+    # Os seus métodos de controlo originais, sem alterações
     async def async_start(self):
-        """Start cleaning, using your original logic."""
-        state = self.coordinator.data
+        state = self.coordinator.data;
         if not state: return
-        mode = state.get('mode')
-        is_mop = state.get('is_mop')
-        actionMode = 0
-        if mode == 4 and self._last_clean_point is not None:
-            method, param = 'set_pointclean', [1, self._last_clean_point[0], self._last_clean_point[1]]
+        mode = state.get('mode'); is_mop = state.get('is_mop'); actionMode = 0
+        if mode == 4 and self._last_clean_point is not None: method, param = 'set_pointclean', [1, self._last_clean_point[0], self._last_clean_point[1]]
         else:
             if mode == 2: actionMode = 2
             else: actionMode = 3 if is_mop == 2 else is_mop
@@ -145,14 +135,10 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
         await self._try_command("Unable to start", self._vacuum.raw_command, method, param)
 
     async def async_pause(self):
-        """Pause cleaning, using your original logic."""
-        state = self.coordinator.data
+        state = self.coordinator.data;
         if not state: return
-        mode = state.get('mode')
-        is_mop = state.get('is_mop')
-        actionMode = 0
-        if mode == 4 and self._last_clean_point is not None:
-            method, param = 'set_pointclean', [3, self._last_clean_point[0], self._last_clean_point[1]]
+        mode = state.get('mode'); is_mop = state.get('is_mop'); actionMode = 0
+        if mode == 4 and self._last_clean_point is not None: method, param = 'set_pointclean', [3, self._last_clean_point[0], self._last_clean_point[1]]
         else:
             if mode == 2: actionMode = 2
             else: actionMode = 3 if is_mop == 2 else is_mop
@@ -161,8 +147,7 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
         await self._try_command("Unable to pause", self._vacuum.raw_command, method, param)
 
     async def async_stop(self, **kwargs):
-        """Stop cleaning, using your original logic."""
-        state = self.coordinator.data
+        state = self.coordinator.data;
         if not state: return
         mode = state.get('mode')
         if mode == 3: method, param = 'set_mode', [3, 0]
@@ -174,9 +159,7 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
 
     async def async_set_fan_speed(self, fan_speed, **kwargs):
         speed_value = FAN_SPEEDS.get(fan_speed.capitalize())
-        if speed_value is None:
-            _LOGGER.error("Invalid fan speed: %s", fan_speed)
-            return
+        if speed_value is None: _LOGGER.error("Invalid fan speed: %s", fan_speed); return
         await self._try_command("Unable to set fan speed", self._vacuum.raw_command, 'set_suction', [speed_value])
 
     async def async_return_to_base(self, **kwargs):
@@ -193,15 +176,12 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
             elif params[0].isnumeric(): params[0] = int(params[0])
         await self._try_command("Unable to send command", self._vacuum.raw_command, command, params)
 
-    # --- Advanced Services (from your original code) ---
     async def async_clean_zone(self, zone, repeats=1):
-        result = []
-        i = 0
+        result = []; i = 0
         for z in zone:
             x1, y2, x2, y1 = z
             res = '_'.join(str(x) for x in [i, 0, x1, y1, x1, y2, x2, y2, x2, y1])
-            for _ in range(repeats):
-                result.append(res); i += 1
+            for _ in range(repeats): result.append(res); i += 1
         result = [i] + result
         await self._try_command("Unable to clean zone", self._vacuum.raw_command, 'set_uploadmap', [1])
         await self._try_command("Unable to clean zone", self._vacuum.raw_command, 'set_zone', result)
@@ -221,3 +201,4 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
         self._last_clean_point = point
         await self._try_command("Unable to clean point", self._vacuum.raw_command, 'set_uploadmap', [0])
         await self._try_command("Unable to clean point", self._vacuum.raw_command, 'set_pointclean', [1, point[0], point[1]])
+
