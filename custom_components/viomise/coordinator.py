@@ -27,29 +27,23 @@ class ViomiSECoordinator(DataUpdateCoordinator[list]):
         )
 
     async def _async_update_data(self) -> list:
-        """Fetch data from the vacuum using raw miio commands."""
+        """Fetch data from the vacuum using the original 'get_prop' method."""
         try:
-            properties_to_fetch = [
-                {"did": "battary_life", "siid": 3, "piid": 1},      # 0
-                {"did": "run_state", "siid": 2, "piid": 1},        # 1
-                {"did": "suction_grade", "siid": 2, "piid": 2},    # 2
-                {"did": "s_time", "siid": 4, "piid": 2},           # 3
-                {"did": "s_area", "siid": 4, "piid": 1},           # 4
-                {"did": "main_brush_life", "siid": 5, "piid": 1},  # 5
-                {"did": "side_brush_life", "siid": 6, "piid": 1},  # 6
-                {"did": "hypa_life", "siid": 7, "piid": 1},        # 7
-                {"did": "mop_life", "siid": 8, "piid": 1},         # 8
-                {"did": "water_grade", "siid": 2, "piid": 5},      # 9
-                {"did": "is_mop", "siid": 2, "piid": 7},           # 10
-                {"did": "mop_type", "siid": 2, "piid": 9},         # 11
+            # CORREÇÃO: Usar o método 'get_prop' com a lista de parâmetros,
+            # exatamente como na sua integração original. Este método é mais
+            # resiliente para este modelo específico.
+            params = [
+                "run_state", "suction_grade", "battary_life", "s_time", "s_area",
+                "main_brush_life", "side_brush_life", "hypa_life", "mop_life",
+                "water_grade", "is_mop", "mop_type"
             ]
-            results = await self.hass.async_add_executor_job(
-                self.device.send, "get_properties", properties_to_fetch
-            )
             
-            # Check the 'code' of each result. If it's not 0, the value is invalid.
-            return [res.get('value') if res.get('code') == 0 else None for res in results]
+            # O 'get_prop' retorna uma lista de valores diretamente, na ordem pedida.
+            # Isto evita os erros de 'code: -4003' que estávamos a ver.
+            results = await self.hass.async_add_executor_job(
+                self.device.send, "get_prop", params
+            )
+            return results
 
         except DeviceException as e:
             raise UpdateFailed(f"Error communicating with device: {e}") from e
-
