@@ -1,0 +1,49 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Viomi SE Setup",
+        "description": "Enter the connection details for your Viomi SE vacuum.",
+        "data": {
+          "name": "Name",
+          "host": "IP Address",
+          "token": "Token"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect. Please check the IP address and token.",
+      "unknown": "An unknown error occurred."
+    },
+    "abort": {
+      "already_configured": "This device is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Viomi SE Settings",
+        "description": "Adjust the integration settings.",
+        "data": {
+          "scan_interval": "Update Interval (seconds, min 5)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "main_brush_left": {
+        "name": "Main brush life"
+      },
+      "side_brush_left": {
+        "name": "Side brush life"
+      },
+      "filter_left": {
+        "name": "Filter life"
+      },
+      "mop_left": {
+        "name": "Mop life"
+      }
+    }
+  }
+}

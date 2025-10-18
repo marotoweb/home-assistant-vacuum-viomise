@@ -1,0 +1,49 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configuração do Viomi SE",
+        "description": "Introduza os detalhes de ligação para o seu aspirador Viomi SE.",
+        "data": {
+          "name": "Nome",
+          "host": "Endereço IP",
+          "token": "Token"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Falha na ligação. Por favor, verifique o endereço IP e o token.",
+      "unknown": "Ocorreu um erro desconhecido."
+    },
+    "abort": {
+      "already_configured": "Este dispositivo já está configurado."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Definições do Viomi SE",
+        "description": "Ajuste as definições da integração.",
+        "data": {
+          "scan_interval": "Intervalo de Atualização (segundos, min 5)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "main_brush_left": {
+        "name": "Vida útil da escova principal"
+      },
+      "side_brush_left": {
+        "name": "Vida útil da escova lateral"
+      },
+      "filter_left": {
+        "name": "Vida útil do filtro"
+      },
+      "mop_left": {
+        "name": "Vida útil da mopa"
+      }
+    }
+  }
+}
