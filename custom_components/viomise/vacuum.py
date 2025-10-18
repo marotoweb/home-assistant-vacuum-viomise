@@ -11,7 +11,6 @@ from homeassistant.components.vacuum import (
     DOMAIN as VACUUM_DOMAIN,
     StateVacuumEntity,
     VacuumEntityFeature,
-    # CORREÇÃO: Importar o VacuumActivity
     VacuumActivity,
 )
 from homeassistant.config_entries import ConfigEntry
@@ -111,7 +110,6 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
     def supported_features(self):
         return SUPPORT_XIAOMI
 
-    # O resto da classe (todos os métodos async_...) permanece exatamente igual.
     async def _try_command(self, mask_error, func, *args, **kwargs):
         try:
             await self.hass.async_add_executor_job(partial(func, *args, **kwargs))
