@@ -13,10 +13,12 @@ from homeassistant.components.vacuum import (
     VacuumEntityFeature,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import ATTR_ENTITY_ID, CONF_HOST, CONF_NAME, CONF_TOKEN
+from homeassistant.const import ATTR_ENTITY_ID
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+# CORREÇÃO: A linha que faltava está aqui.
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import ViomiSECoordinator
@@ -44,18 +46,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     mirobo = MiroboVacuum2(coordinator, entry)
     async_add_entities([mirobo], update_before_add=True)
     
-    # CORREÇÃO: Reverter para a forma original e compatível de registar serviços.
     async def async_service_handler(service):
         method_def = SERVICE_TO_METHOD.get(service.service)
         if not method_def: return
-
         params = {key: value for key, value in service.data.items() if key != ATTR_ENTITY_ID}
         entity_ids = service.data.get(ATTR_ENTITY_ID)
-        
-        target_vacuums = [mirobo] # Simplificado para a entidade atual
+        target_vacuums = [mirobo]
         if entity_ids and mirobo.entity_id not in entity_ids:
             return
-
         for vacuum in target_vacuums:
             await getattr(vacuum, method_def["method"])(**params)
 
@@ -68,12 +66,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         )
 
 class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
-    """Representation of a Viomi Vacuum cleaner robot, adapted for Coordinator."""
     _attr_has_entity_name = True
     _attr_name = None
 
     def __init__(self, coordinator: ViomiSECoordinator, config_entry: ConfigEntry):
-        """Initialize the handler."""
         super().__init__(coordinator)
         self._vacuum = coordinator.vacuum
         self._attr_unique_id = config_entry.unique_id
@@ -112,7 +108,6 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
         return SUPPORT_XIAOMI
 
     async def _try_command(self, mask_error, func, *args, **kwargs):
-        """Call a vacuum command and handle exceptions."""
         try:
             await self.hass.async_add_executor_job(partial(func, *args, **kwargs))
             await self.coordinator.async_request_refresh()
@@ -121,7 +116,6 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
             _LOGGER.error(mask_error, exc)
             return False
 
-    # Os seus métodos de controlo originais, sem alterações
     async def async_start(self):
         state = self.coordinator.data;
         if not state: return
@@ -201,4 +195,3 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
         self._last_clean_point = point
         await self._try_command("Unable to clean point", self._vacuum.raw_command, 'set_uploadmap', [0])
         await self._try_command("Unable to clean point", self._vacuum.raw_command, 'set_pointclean', [1, point[0], point[1]])
-
