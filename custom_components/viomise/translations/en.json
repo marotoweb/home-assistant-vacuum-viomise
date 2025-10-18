@@ -30,5 +30,24 @@
                 }
             }
         }
+    },
+    "entity": {
+        "sensor": {
+            "battery": {
+                "name": "Battery"
+            },
+            "main_brush_left": {
+                "name": "Main Brush Life"
+            },
+            "side_brush_left": {
+                "name": "Side Brush Life"
+            },
+            "filter_left": {
+                "name": "Filter Life"
+            },
+            "mop_left": {
+                "name": "Mop Life"
+            }
+        }
     }
 }
