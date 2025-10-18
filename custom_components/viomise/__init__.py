@@ -10,7 +10,13 @@ from homeassistant.const import CONF_HOST, CONF_TOKEN, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 
-from .const import DOMAIN
+from .const import (
+    DOMAIN,
+    CONF_COMMAND_COOLDOWN,
+    CONF_SCAN_INTERVAL,
+    DEFAULT_COMMAND_COOLDOWN,
+    DEFAULT_SCAN_INTERVAL,
+)
 from .coordinator import ViomiSECoordinator
 
 PLATFORMS: list[Platform] = [Platform.VACUUM, Platform.SENSOR]
@@ -30,16 +36,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     except DeviceException as e:
         raise ConfigEntryNotReady(f"Could not connect to the vacuum: {e}") from e
 
-    # Create the coordinator, passing the vacuum instance
-    coordinator = ViomiSECoordinator(hass, vacuum, scan_interval=30)
+    # Ler os valores das opções, com os defaults como fallback
+    cooldown = entry.options.get(CONF_COMMAND_COOLDOWN, DEFAULT_COMMAND_COOLDOWN)
+    scan_interval = entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
     
-    # Fetch initial data
+    # Passar o scan_interval para o coordinator
+    coordinator = ViomiSECoordinator(hass, vacuum, scan_interval=scan_interval)
+    
     await coordinator.async_config_entry_first_refresh()
 
     # Store the coordinator and vacuum instance to be used by the platform
     hass.data[DOMAIN][entry.entry_id] = {
         "coordinator": coordinator,
         "vacuum": vacuum,
+        "cooldown": cooldown,
     }
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -53,6 +63,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return unload_ok
 
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Reload config entry."""
+    """Reload config entry when options are updated."""
     await async_unload_entry(hass, entry)
     await async_setup_entry(hass, entry)
