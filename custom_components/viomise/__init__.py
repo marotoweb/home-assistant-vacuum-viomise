@@ -13,7 +13,7 @@ from homeassistant.exceptions import ConfigEntryNotReady
 from .const import DOMAIN
 from .coordinator import ViomiSECoordinator
 
-PLATFORMS: list[Platform] = [Platform.VACUUM]
+PLATFORMS: list[Platform] = [Platform.VACUUM, Platform.SENSOR]
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
