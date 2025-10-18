@@ -1,12 +1,12 @@
+# custom_components/viomise/const.py
 # -*- coding: utf-8 -*-
-"""Constants for the Viomi SE Vacuum integration."""
+"""Constants for the Viomi SE integration."""
+from homeassistant.const import CONF_HOST, CONF_TOKEN, CONF_NAME
 
-# The domain of your integration. This is the name under which it will be listed and configured.
+# Domain for the integration. This MUST be "viomise".
 DOMAIN = "viomise"
 
-# Default values used in the config flow
-DEFAULT_NAME = "Viomi SE"
-DEFAULT_SCAN_INTERVAL = 30  # in seconds
-
-# Configuration constants
-CONF_SCAN_INTERVAL = "scan_interval"
+# Configuration constants, imported for consistency.
+CONF_HOST = CONF_HOST
+CONF_TOKEN = CONF_TOKEN
+CONF_NAME = CONF_NAME

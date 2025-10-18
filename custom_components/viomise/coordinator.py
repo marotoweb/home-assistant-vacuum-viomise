@@ -1,24 +1,47 @@
+# custom_components/viomise/coordinator.py
 # -*- coding: utf-8 -*-
-"""DataUpdateCoordinator for the Viomi SE integration."""
-
+"""DataUpdateCoordinator for the Viomi SE integration, using the original update logic."""
 import logging
 from datetime import timedelta
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from miio import Device, DeviceException
+from miio import DeviceException, ViomiVacuum
 
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
+# The property list and mapping from your original, working vacuum.py
+ALL_PROPS = [
+    "run_state", "mode", "err_state", "battary_life", "box_type", "mop_type",
+    "s_time", "s_area", "suction_grade", "water_grade", "remember_map", "has_map",
+    "is_mop", "has_newmap", "main_brush_percentage", "main_brush_left",
+    "side_brush_percentage", "side_brush_left", "filter_percentage", "filter_left",
+    "mop_percentage", "mop_left", "repeat_state", "mop_route"
+]
 
-class ViomiSECoordinator(DataUpdateCoordinator[list]):
-    """Manages fetching data from the Viomi SE vacuum and updating entities."""
+MAPPING = [
+    {"did":"run_state","siid":2,"piid":1}, {"did":"mode","siid":2,"piid":18},
+    {"did":"err_state","siid":2,"piid":2}, {"did":"battary_life","siid":3,"piid":1},
+    {"did":"box_type","siid":2,"piid":12}, {"did":"mop_type","siid":2,"piid":13},
+    {"did":"s_time","siid":2,"piid":15}, {"did":"s_area","siid":2,"piid":16},
+    {"did":"suction_grade","siid":2,"piid":19}, {"did":"water_grade","siid":4,"piid":18},
+    {"did":"remember_map","siid":4,"piid":3}, {"did":"has_map","siid":4,"piid":4},
+    {"did":"is_mop","siid":2,"piid":11}, {"did":"has_newmap","siid":4,"piid":5},
+    {"did":"main_brush_percentage","siid":4,"piid":10}, {"did":"main_brush_left","siid":4,"piid":11},
+    {"did":"side_brush_percentage","siid":4,"piid":8}, {"did":"side_brush_left","siid":4,"piid":9},
+    {"did":"filter_percentage","siid":4,"piid":12}, {"did":"filter_left","siid":4,"piid":13},
+    {"did":"mop_left_percentage","siid":4,"piid":14}, {"did":"mop_left","siid":4,"piid":15},
+    {"did":"repeat_state","siid":4,"piid":1}, {"did":"mop_route","siid":4,"piid":6}
+]
 
-    def __init__(self, hass: HomeAssistant, device: Device, scan_interval: int):
+class ViomiSECoordinator(DataUpdateCoordinator):
+    """Manages fetching data from the Viomi SE vacuum."""
+
+    def __init__(self, hass: HomeAssistant, vacuum: ViomiVacuum, scan_interval: int):
         """Initialize the data update coordinator."""
-        self.device = device
+        self.vacuum = vacuum
         super().__init__(
             hass,
             _LOGGER,
@@ -26,71 +49,22 @@ class ViomiSECoordinator(DataUpdateCoordinator[list]):
             update_interval=timedelta(seconds=scan_interval),
         )
 
-    async def _async_update_data(self) -> list:
-        """Fetch data from the vacuum using the 'get_properties' method with did/siid/piid."""
+    async def _async_update_data(self) -> dict:
+        """Fetch data from the vacuum using the original dual-call method."""
         try:
-            # CORREÇÃO FINAL: Voltar a usar 'get_properties' com a sintaxe completa,
-            # que sabemos que retorna dados, mesmo que com alguns erros.
-            properties_to_fetch = [
-                {"did": "battary_life", "siid": 3, "piid": 1},      # 0
-                {"did": "run_state", "siid": 2, "piid": 1},        # 1
-                {"did": "suction_grade", "siid": 2, "piid": 2},    # 2
-                {"did": "s_time", "siid": 4, "piid": 2},           # 3
-                {"did": "s_area", "siid": 4, "piid": 1},           # 4
-                {"did": "main_brush_life", "siid": 5, "piid": 1},  # 5
-                {"did": "side_brush_life", "siid": 6, "piid": 1},  # 6
-                {"did": "hypa_life", "siid": 7, "piid": 1},        # 7
-                {"did": "mop_life", "siid": 8, "piid": 1},         # 8
-                {"did": "water_grade", "siid": 2, "piid": 5},      # 9
-                {"did": "is_mop", "siid": 2, "piid": 7},           # 10
-                {"did": "mop_type", "siid": 2, "piid": 9},         # 11
-            ]
-            results = await self.hass.async_add_executor_job(
-                self.device.send, "get_properties", properties_to_fetch
+            # This is your original, correct logic.
+            properties = await self.hass.async_add_executor_job(
+                self.vacuum.raw_command, 'get_properties', MAPPING[:12]
             )
-            
-            # A verificação de 'code' é crucial aqui para lidar com os erros -4003.
-            # Se houver um erro, o valor será None, e o vacuum.py saberá como lidar com isso.
-            processed_results = [res.get('value') if res.get('code') == 0 else None for res in results]
-            
-            # Re-mapear para a ordem que o vacuum.py espera, caso 'get_properties' não garanta a ordem
-            # (embora normalmente garanta). Esta é uma segurança extra.
-            param_order = [
-                "battary_life", "run_state", "suction_grade", "s_time", "s_area",
-                "main_brush_life", "side_brush_life", "hypa_life", "mop_life",
-                "water_grade", "is_mop", "mop_type"
-            ]
-            
-            # Criar um dicionário de resultados para mapeamento seguro
-            result_map = {res['did']: res for res in results}
+            properties.extend(await self.hass.async_add_executor_job(
+                self.vacuum.raw_command, 'get_properties', MAPPING[12:]
+            ))
 
-            # Reconstruir a lista na ordem correta, respeitando os erros
-            final_results = []
-            for did in param_order:
-                res = result_map.get(did)
-                if res and res.get('code') == 0:
-                    final_results.append(res.get('value'))
-                else:
-                    final_results.append(None)
+            # Extract only the values, checking for errors
+            state_values = [p.get('value') if p.get('code') == 0 else None for p in properties]
             
-            # A ordem no vacuum.py é diferente, vamos ajustar aqui para não mexer mais lá
-            # Ordem no vacuum.py: run_state, suction_grade, battary_life, ...
-            final_ordered_list = [
-                final_results[1], # run_state
-                final_results[2], # suction_grade
-                final_results[0], # battary_life
-                final_results[3], # s_time
-                final_results[4], # s_area
-                final_results[5], # main_brush_life
-                final_results[6], # side_brush_life
-                final_results[7], # hypa_life
-                final_results[8], # mop_life
-                final_results[9], # water_grade
-                final_results[10], # is_mop
-                final_results[11], # mop_type
-            ]
-            
-            return final_ordered_list
+            # Return a dictionary, which is easier and safer to use
+            return dict(zip(ALL_PROPS, state_values))
 
         except DeviceException as e:
             raise UpdateFailed(f"Error communicating with device: {e}") from e

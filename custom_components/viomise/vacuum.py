@@ -1,14 +1,22 @@
+# custom_components/viomise/vacuum.py
 # -*- coding: utf-8 -*-
-"""Vacuum platform for Viomi SE."""
-
+"""Custom Component for Viomi Vacuum in Home Assistant, adapted for Config Flow."""
+import asyncio
 import logging
-from datetime import timedelta
+from functools import partial
 
-import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-from homeassistant.components.vacuum import StateVacuumEntity, VacuumEntityFeature
+from miio import DeviceException, ViomiVacuum
+
+from homeassistant.components.vacuum import (
+    DOMAIN as VACUUM_DOMAIN,
+    StateVacuumEntity,
+    VacuumEntityFeature,
+)
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, ServiceCall, callback
+from homeassistant.const import ATTR_ENTITY_ID
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -17,142 +25,199 @@ from .coordinator import ViomiSECoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-# Mappings based on original, working implementation
-STATE_CODE_TO_STATE = {0: "Idle", 1: "Idle", 2: "Paused", 3: "Cleaning", 4: "Returning", 5: "Docked", 6: "Mopping"}
+# --- SERVICES (from your original code) ---
+SERVICE_CLEAN_ZONE = "vacuum_clean_zone"
+SERVICE_GOTO = "vacuum_goto"
+SERVICE_CLEAN_SEGMENT = "vacuum_clean_segment"
+SERVICE_CLEAN_POINT = "xiaomi_clean_point" # Legacy name for compatibility
+ATTR_ZONE_ARRAY = "zone"
+ATTR_ZONE_REPEATER = "repeats"
+ATTR_X_COORD = "x_coord"
+ATTR_Y_COORD = "y_coord"
+ATTR_SEGMENTS = "segments"
+ATTR_POINT = "point"
+VACUUM_SERVICE_SCHEMA = vol.Schema({vol.Optional(ATTR_ENTITY_ID): cv.entity_ids})
+SERVICE_SCHEMA_CLEAN_ZONE = VACUUM_SERVICE_SCHEMA.extend({vol.Required(ATTR_ZONE_ARRAY): vol.All(list, [vol.ExactSequence([vol.Coerce(float), vol.Coerce(float), vol.Coerce(float), vol.Coerce(float)])]), vol.Required(ATTR_ZONE_REPEATER): vol.All(vol.Coerce(int), vol.Clamp(min=1, max=3))})
+SERVICE_SCHEMA_GOTO = VACUUM_SERVICE_SCHEMA.extend({vol.Required(ATTR_X_COORD): vol.Coerce(float), vol.Required(ATTR_Y_COORD): vol.Coerce(float)})
+SERVICE_SCHEMA_CLEAN_SEGMENT = VACUUM_SERVICE_SCHEMA.extend({vol.Required(ATTR_SEGMENTS): vol.Any(vol.Coerce(int), [vol.Coerce(int)])})
+SERVICE_SCHEMA_CLEAN_POINT = VACUUM_SERVICE_SCHEMA.extend({vol.Required(ATTR_POINT): vol.All(vol.ExactSequence([vol.Coerce(float), vol.Coerce(float)]))})
+SERVICE_TO_METHOD = {
+    SERVICE_CLEAN_ZONE: {"method": "async_clean_zone", "schema": SERVICE_SCHEMA_CLEAN_ZONE},
+    SERVICE_GOTO: {"method": "async_goto", "schema": SERVICE_SCHEMA_GOTO},
+    SERVICE_CLEAN_SEGMENT: {"method": "async_clean_segment", "schema": SERVICE_SCHEMA_CLEAN_SEGMENT},
+    SERVICE_CLEAN_POINT: {"method": "async_clean_point", "schema": SERVICE_SCHEMA_CLEAN_POINT},
+}
+
+# --- CONSTANTS (from your original code) ---
 FAN_SPEEDS = {"Silent": 0, "Standard": 1, "Medium": 2, "Turbo": 3}
 FAN_SPEEDS_REVERSE = {v: k for k, v in FAN_SPEEDS.items()}
-WATER_LEVELS = {"Low": 11, "Medium": 12, "High": 13}
-WATER_LEVELS_REVERSE = {v: k for k, v in WATER_LEVELS.items()}
-MOP_PATTERNS = {"Standard": 0, "Y-type": 1}
-MOP_PATTERNS_REVERSE = {v: k for k, v in MOP_PATTERNS.items()}
-CONSUMABLES = {"main_brush": 5, "side_brush": 6, "filter": 7, "mop": 8}
+SUPPORT_XIAOMI = (VacuumEntityFeature.PAUSE | VacuumEntityFeature.STOP | VacuumEntityFeature.RETURN_HOME | VacuumEntityFeature.FAN_SPEED | VacuumEntityFeature.LOCATE | VacuumEntityFeature.SEND_COMMAND | VacuumEntityFeature.BATTERY | VacuumEntityFeature.START | VacuumEntityFeature.STATE)
+STATE_CODE_TO_STATE = {0: "Idle", 1: "Idle", 2: "Paused", 3: "Returning", 4: "Docked", 5: "Cleaning", 6: "Cleaning", 7: "Cleaning"}
 
-SUPPORT_VIOMISE = (
-    VacuumEntityFeature.PAUSE | VacuumEntityFeature.STOP | VacuumEntityFeature.RETURN_HOME |
-    VacuumEntityFeature.FAN_SPEED | VacuumEntityFeature.BATTERY | VacuumEntityFeature.STATUS |
-    VacuumEntityFeature.SEND_COMMAND | VacuumEntityFeature.LOCATE | VacuumEntityFeature.CLEAN_SPOT |
-    VacuumEntityFeature.START
-)
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
+    """Set up the Viomi vacuum platform from a config entry."""
+    coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+    
+    mirobo = MiroboVacuum2(coordinator, entry)
+    async_add_entities([mirobo], update_before_add=True)
+    
+    # Register services to the platform
+    platform = hass.helpers.entity_platform.async_get_current_platform()
+    for service_name, details in SERVICE_TO_METHOD.items():
+        platform.async_register_entity_service(
+            service_name, details["schema"], details["method"]
+        )
 
-# Service Schemas
-SERVICE_SET_WATER_LEVEL_SCHEMA = vol.Schema({vol.Required('entity_id'): cv.entity_id, vol.Required('water_level'): vol.In(list(WATER_LEVELS.keys()))})
-SERVICE_SET_MOP_PATTERN_SCHEMA = vol.Schema({vol.Required('entity_id'): cv.entity_id, vol.Required('mop_pattern'): vol.In(list(MOP_PATTERNS.keys()))})
-SERVICE_RESET_CONSUMABLE_SCHEMA = vol.Schema({vol.Required('entity_id'): cv.entity_id, vol.Required('consumable'): vol.In(list(CONSUMABLES.keys()))})
-
-
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
-    coordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities([ViomiSE(coordinator, entry)])
-
-
-class ViomiSE(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
-    _attr_should_poll = False
+class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
+    """Representation of a Viomi Vacuum cleaner robot, adapted for Coordinator."""
     _attr_has_entity_name = True
     _attr_name = None
 
     def __init__(self, coordinator: ViomiSECoordinator, config_entry: ConfigEntry):
+        """Initialize the handler."""
         super().__init__(coordinator)
-        self._device = coordinator.device
+        self._vacuum = coordinator.vacuum
         self._attr_unique_id = config_entry.unique_id
-        self._attr_device_info = {"identifiers": {(DOMAIN, self.unique_id)}, "name": config_entry.title, "manufacturer": "Viomi", "model": "SE (V19)"}
-        self._attr_fan_speed_list = list(FAN_SPEEDS.keys())
-        self._attr_supported_features = SUPPORT_VIOMISE
-        self._extra_attributes = {}
-
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        if not self.coordinator.data or len(self.coordinator.data) < 12:
-            self._attr_available = False
-            self.async_write_ha_state()
-            return
-
-        self._attr_available = True
-        data = self.coordinator.data
+        self._last_clean_point = None
         
-        # Data order from get_prop:
-        # 0:run_state, 1:suction_grade, 2:battary_life, 3:s_time, 4:s_area,
-        # 5:main_brush_life, 6:side_brush_life, 7:hypa_life, 8:mop_life,
-        # 9:water_grade, 10:is_mop, 11:mop_type
-
-        self._attr_state = STATE_CODE_TO_STATE.get(data[0])
-        self._attr_fan_speed = FAN_SPEEDS_REVERSE.get(data[1])
-        self._attr_battery_level = data[2]
-        
-        self._extra_attributes = {
-            "cleaning_time": str(timedelta(seconds=data[3] or 0)),
-            "cleaned_area": data[4],
-            "main_brush_left": data[5],
-            "side_brush_left": data[6],
-            "filter_left": data[7],
-            "mop_left": data[8],
-            "water_level": WATER_LEVELS_REVERSE.get(data[9]),
-            "mop_installed": "Yes" if data[10] == 1 else "No",
-            "mop_pattern": MOP_PATTERNS_REVERSE.get(data[11]),
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, self.unique_id)},
+            "name": config_entry.title,
+            "manufacturer": "Viomi",
+            "model": "V-RVCLM21A (SE)",
         }
-        self.async_write_ha_state()
+
+    @property
+    def state(self):
+        if self.coordinator.data and "run_state" in self.coordinator.data:
+            return STATE_CODE_TO_STATE.get(self.coordinator.data["run_state"])
+        return None
+
+    @property
+    def battery_level(self):
+        if self.coordinator.data:
+            return self.coordinator.data.get("battary_life")
+
+    @property
+    def fan_speed(self):
+        if self.coordinator.data:
+            speed = self.coordinator.data.get("suction_grade")
+            return FAN_SPEEDS_REVERSE.get(speed, speed)
+
+    @property
+    def fan_speed_list(self):
+        return list(sorted(FAN_SPEEDS.keys(), key=lambda s: FAN_SPEEDS[s]))
 
     @property
     def extra_state_attributes(self):
-        return self._extra_attributes
+        if self.coordinator.data:
+            return self.coordinator.data
+        return {}
 
-    async def _execute_and_refresh(self, method, *args):
-        """Execute a command and then trigger a coordinator refresh."""
-        await self.hass.async_add_executor_job(method, *args)
-        # Add a small delay to give the vacuum time to process the command before refreshing
-        await asyncio.sleep(1)
-        await self.coordinator.async_request_refresh()
+    @property
+    def supported_features(self):
+        return SUPPORT_XIAOMI
 
-    # --- Control Methods based on original, working implementation ---
+    async def _try_command(self, mask_error, func, *args, **kwargs):
+        """Call a vacuum command and handle exceptions."""
+        try:
+            await self.hass.async_add_executor_job(partial(func, *args, **kwargs))
+            await self.coordinator.async_request_refresh()
+            return True
+        except DeviceException as exc:
+            _LOGGER.error(mask_error, exc)
+            return False
+
     async def async_start(self):
-        await self._execute_and_refresh(self._device.send, "set_mode_withroom", [0, 1, 0])
+        """Start cleaning, using your original logic."""
+        state = self.coordinator.data
+        if not state: return
+        mode = state.get('mode')
+        is_mop = state.get('is_mop')
+        actionMode = 0
+        if mode == 4 and self._last_clean_point is not None:
+            method, param = 'set_pointclean', [1, self._last_clean_point[0], self._last_clean_point[1]]
+        else:
+            if mode == 2: actionMode = 2
+            else: actionMode = 3 if is_mop == 2 else is_mop
+            if mode == 3: method, param = 'set_mode', [3, 1]
+            else: method, param = 'set_mode_withroom', [actionMode, 1, 0]
+        await self._try_command("Unable to start", self._vacuum.raw_command, method, param)
 
     async def async_pause(self):
-        await self._execute_and_refresh(self._device.send, "set_mode_withroom", [0, 2, 0])
+        """Pause cleaning, using your original logic."""
+        state = self.coordinator.data
+        if not state: return
+        mode = state.get('mode')
+        is_mop = state.get('is_mop')
+        actionMode = 0
+        if mode == 4 and self._last_clean_point is not None:
+            method, param = 'set_pointclean', [3, self._last_clean_point[0], self._last_clean_point[1]]
+        else:
+            if mode == 2: actionMode = 2
+            else: actionMode = 3 if is_mop == 2 else is_mop
+            if mode == 3: method, param = 'set_mode', [3, 3]
+            else: method, param = 'set_mode_withroom', [actionMode, 3, 0]
+        await self._try_command("Unable to pause", self._vacuum.raw_command, method, param)
 
     async def async_stop(self, **kwargs):
-        await self._execute_and_refresh(self._device.send, "set_mode_withroom", [0, 0, 0])
+        """Stop cleaning, using your original logic."""
+        state = self.coordinator.data
+        if not state: return
+        mode = state.get('mode')
+        if mode == 3: method, param = 'set_mode', [3, 0]
+        elif mode == 4:
+            method, param = 'set_pointclean', [0, 0, 0]
+            self._last_clean_point = None
+        else: method, param = 'set_mode', [0]
+        await self._try_command("Unable to stop", self._vacuum.raw_command, method, param)
+
+    async def async_set_fan_speed(self, fan_speed, **kwargs):
+        speed_value = FAN_SPEEDS.get(fan_speed.capitalize())
+        if speed_value is None:
+            _LOGGER.error("Invalid fan speed: %s", fan_speed)
+            return
+        await self._try_command("Unable to set fan speed", self._vacuum.raw_command, 'set_suction', [speed_value])
 
     async def async_return_to_base(self, **kwargs):
-        await self._execute_and_refresh(self._device.send, "set_charge", [1])
+        await self._try_command("Unable to return home", self._vacuum.raw_command, 'set_charge', [1])
 
     async def async_locate(self, **kwargs):
-        # CORREÇÃO: Restaurado o comando 'set_resetpos' original para localizar.
-        await self._execute_and_refresh(self._device.send, "set_resetpos", [1])
+        await self._try_command("Unable to locate", self._vacuum.raw_command, 'set_resetpos', [1])
 
-    async def async_clean_spot(self, **kwargs):
-        await self._execute_and_refresh(self._device.send, "set_mode", [2])
+    async def async_send_command(self, command, params=None, **kwargs):
+        if isinstance(params, list) and len(params) == 1 and isinstance(params[0], str):
+            if params[0].startswith('[') and params[0].endswith(']'):
+                try: params = eval(params[0])
+                except: _LOGGER.error("Invalid params format: %s", params)
+            elif params[0].isnumeric(): params[0] = int(params[0])
+        await self._try_command("Unable to send command", self._vacuum.raw_command, command, params)
 
-    async def async_set_fan_speed(self, fan_speed: str, **kwargs):
-        if (speed_value := FAN_SPEEDS.get(fan_speed)) is not None:
-            await self._execute_and_refresh(self._device.send, "set_suction", [speed_value])
+    # --- Advanced Services (from your original code) ---
+    async def async_clean_zone(self, zone, repeats=1):
+        result = []
+        i = 0
+        for z in zone:
+            x1, y2, x2, y1 = z
+            res = '_'.join(str(x) for x in [i, 0, x1, y1, x1, y2, x2, y2, x2, y1])
+            for _ in range(repeats):
+                result.append(res); i += 1
+        result = [i] + result
+        await self._try_command("Unable to clean zone", self._vacuum.raw_command, 'set_uploadmap', [1])
+        await self._try_command("Unable to clean zone", self._vacuum.raw_command, 'set_zone', result)
+        await self._try_command("Unable to clean zone", self._vacuum.raw_command, 'set_mode', [3, 1])
 
-    async def async_send_command(self, command: str, params: dict | list = None, **kwargs):
-        await self._execute_and_refresh(self._device.send, command, params)
+    async def async_goto(self, x_coord, y_coord):
+        self._last_clean_point = [x_coord, y_coord]
+        await self._try_command("Unable to goto", self._vacuum.raw_command, 'set_uploadmap', [0])
+        await self._try_command("Unable to goto", self._vacuum.raw_command, 'set_pointclean', [1, x_coord, y_coord])
 
-    # --- Custom Service Methods ---
-    async def async_set_water_level(self, water_level: str):
-        if (level_value := WATER_LEVELS.get(water_level)) is not None:
-            # Este comando usa set_properties, que parece ser para configurações mais específicas
-            await self._execute_and_refresh(self._device.send, "set_properties", [{"did": "water_level", "siid": 2, "piid": 5, "value": level_value}])
+    async def async_clean_segment(self, segments):
+        if isinstance(segments, int): segments = [segments]
+        await self._try_command("Unable to clean segments", self._vacuum.raw_command, 'set_uploadmap', [1])
+        await self._try_command("Unable to clean segments", self._vacuum.raw_command, 'set_mode_withroom', [0, 1, len(segments)] + segments)
 
-    async def async_set_mop_pattern(self, mop_pattern: str):
-        if (pattern_value := MOP_PATTERNS.get(mop_pattern)) is not None:
-            await self._execute_and_refresh(self._device.send, "set_properties", [{"did": "mop_pattern", "siid": 2, "piid": 9, "value": pattern_value}])
-
-    async def async_reset_consumable(self, consumable: str):
-        if (siid := CONSUMABLES.get(consumable)) is not None:
-            await self._execute_and_refresh(self._device.send, "set_properties", [{"did": f"reset_{consumable}", "siid": siid, "piid": 1, "value": 100}])
-
-    async def async_added_to_hass(self) -> None:
-        """Register services when entity is added."""
-        await super().async_added_to_hass()
-        # O resto do código de registo de serviços permanece igual
-        @callback
-        def _async_handle_service(service_call: ServiceCall, method):
-            if self.entity_id not in service_call.data.get("entity_id", []): return
-            params = {key: value for key, value in service_call.data.items() if key != "entity_id"}
-            self.hass.async_create_task(method(**params))
-        self.hass.services.async_register(DOMAIN, "set_water_level", lambda call: _async_handle_service(call, self.async_set_water_level), schema=SERVICE_SET_WATER_LEVEL_SCHEMA)
-        self.hass.services.async_register(DOMAIN, "set_mop_pattern", lambda call: _async_handle_service(call, self.async_set_mop_pattern), schema=SERVICE_SET_MOP_PATTERN_SCHEMA)
-        self.hass.services.async_register(DOMAIN, "reset_consumable", lambda call: _async_handle_service(call, self.async_reset_consumable), schema=SERVICE_RESET_CONSUMABLE_SCHEMA)
-
+    async def async_clean_point(self, point):
+        self._last_clean_point = point
+        await self._try_command("Unable to clean point", self._vacuum.raw_command, 'set_uploadmap', [0])
+        await self._try_command("Unable to clean point", self._vacuum.raw_command, 'set_pointclean', [1, point[0], point[1]])
