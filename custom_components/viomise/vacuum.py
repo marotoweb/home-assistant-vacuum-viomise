@@ -81,11 +81,8 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
         self._last_clean_point = None
         self._attr_device_info = {"identifiers": {(DOMAIN, self.unique_id)}, "name": config_entry.title, "manufacturer": "Viomi", "model": "V-RVCLM21A (SE)"}
 
-    # CORREÇÃO: Remover a propriedade 'state'
-    # @property
-    # def state(self): ...
 
-    # CORREÇÃO: Adicionar a propriedade 'activity'
+    # Adicionar a propriedade 'activity'
     @property
     def activity(self) -> VacuumActivity | None:
         """Return the current vacuum activity."""
@@ -93,11 +90,6 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
             state_code = self.coordinator.data.get("run_state")
             return STATE_CODE_TO_ACTIVITY.get(state_code)
         return None
-
-    @property
-    def battery_level(self):
-        if self.coordinator.data:
-            return self.coordinator.data.get("battary_life")
 
     @property
     def fan_speed(self):
