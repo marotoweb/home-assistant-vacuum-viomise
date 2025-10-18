@@ -30,22 +30,26 @@ class ViomiSECoordinator(DataUpdateCoordinator[list]):
         """Fetch data from the vacuum using raw miio commands."""
         try:
             properties_to_fetch = [
-                {"did": "battary_life", "siid": 3, "piid": 1},      # 0: Battery Level
-                {"did": "run_state", "siid": 2, "piid": 1},        # 1: Run State
-                {"did": "suction_grade", "siid": 2, "piid": 2},    # 2: Fan Speed
-                {"did": "s_time", "siid": 4, "piid": 2},           # 3: Cleaning Time
-                {"did": "s_area", "siid": 4, "piid": 1},           # 4: Cleaned Area
-                {"did": "main_brush_life", "siid": 5, "piid": 1},  # 5: Main Brush Life
-                {"did": "side_brush_life", "siid": 6, "piid": 1},  # 6: Side Brush Life
-                {"did": "hypa_life", "siid": 7, "piid": 1},        # 7: Filter Life
-                {"did": "mop_life", "siid": 8, "piid": 1},         # 8: Mop Life
-                {"did": "water_grade", "siid": 2, "piid": 5},      # 9: Water Level
-                {"did": "is_mop", "siid": 2, "piid": 7},           # 10: Mop Installed
-                {"did": "mop_type", "siid": 2, "piid": 9},         # 11: Mop Pattern
+                {"did": "battary_life", "siid": 3, "piid": 1},      # 0
+                {"did": "run_state", "siid": 2, "piid": 1},        # 1
+                {"did": "suction_grade", "siid": 2, "piid": 2},    # 2
+                {"did": "s_time", "siid": 4, "piid": 2},           # 3
+                {"did": "s_area", "siid": 4, "piid": 1},           # 4
+                {"did": "main_brush_life", "siid": 5, "piid": 1},  # 5
+                {"did": "side_brush_life", "siid": 6, "piid": 1},  # 6
+                {"did": "hypa_life", "siid": 7, "piid": 1},        # 7
+                {"did": "mop_life", "siid": 8, "piid": 1},         # 8
+                {"did": "water_grade", "siid": 2, "piid": 5},      # 9
+                {"did": "is_mop", "siid": 2, "piid": 7},           # 10
+                {"did": "mop_type", "siid": 2, "piid": 9},         # 11
             ]
             results = await self.hass.async_add_executor_job(
                 self.device.send, "get_properties", properties_to_fetch
             )
-            return [res.get('value') for res in results]
+            
+            # CORREÇÃO: Verificar o 'code' de cada resultado. Se for diferente de 0, o valor é inválido.
+            return [res.get('value') if res.get('code') == 0 else None for res in results]
+
         except DeviceException as e:
             raise UpdateFailed(f"Error communicating with device: {e}") from e
+git
