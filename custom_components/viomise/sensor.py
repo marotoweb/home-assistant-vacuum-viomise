@@ -18,12 +18,13 @@ from .coordinator import ViomiSECoordinator
 _LOGGER = logging.getLogger(__name__)
 
 # Describes the sensors that will be created.
-# CORREÇÃO: Renomeado 'native_unit_of_measurement' para 'unit_of_measurement'
+# CORREÇÃO: Removido 'state_class' e 'entity_category' da EntityDescription
+# para garantir compatibilidade com versões mais antigas do HA.
 SENSOR_DESCRIPTIONS: tuple[EntityDescription, ...] = (
-    EntityDescription(key="main_brush_left", name="Main Brush Life", icon="mdi:brush", unit_of_measurement=PERCENTAGE, state_class=SensorStateClass.MEASUREMENT, entity_category=EntityCategory.DIAGNOSTIC),
-    EntityDescription(key="side_brush_left", name="Side Brush Life", icon="mdi:brush-off", unit_of_measurement=PERCENTAGE, state_class=SensorStateClass.MEASUREMENT, entity_category=EntityCategory.DIAGNOSTIC),
-    EntityDescription(key="filter_left", name="Filter Life", icon="mdi:air-filter", unit_of_measurement=PERCENTAGE, state_class=SensorStateClass.MEASUREMENT, entity_category=EntityCategory.DIAGNOSTIC),
-    EntityDescription(key="mop_left", name="Mop Life", icon="mdi:hydro-power", unit_of_measurement=PERCENTAGE, state_class=SensorStateClass.MEASUREMENT, entity_category=EntityCategory.DIAGNOSTIC),
+    EntityDescription(key="main_brush_left", name="Main Brush Life", icon="mdi:brush", unit_of_measurement=PERCENTAGE),
+    EntityDescription(key="side_brush_left", name="Side Brush Life", icon="mdi:brush-off", unit_of_measurement=PERCENTAGE),
+    EntityDescription(key="filter_left", name="Filter Life", icon="mdi:air-filter", unit_of_measurement=PERCENTAGE),
+    EntityDescription(key="mop_left", name="Mop Life", icon="mdi:hydro-power", unit_of_measurement=PERCENTAGE),
 )
 # Map key to data index from coordinator
 SENSOR_DATA_INDEX = {"main_brush_left": 5, "side_brush_left": 6, "filter_left": 7, "mop_left": 8}
@@ -39,15 +40,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 class ViomiSEConsumableSensor(CoordinatorEntity[ViomiSECoordinator], SensorEntity):
     """A sensor for a Viomi SE consumable."""
     _attr_has_entity_name = True
+    
+    # CORREÇÃO: Definir 'state_class' e 'entity_category' como atributos da classe
+    # em vez de na EntityDescription.
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(self, coordinator: ViomiSECoordinator, config_entry: ConfigEntry, description: EntityDescription):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self.entity_description = description
         self._attr_unique_id = f"{config_entry.unique_id}_{description.key}"
-        
-        # O 'unit_of_measurement' é agora definido através da EntityDescription
-        # e não precisa de ser definido manualmente aqui.
         
         self._attr_device_info = {"identifiers": {(DOMAIN, config_entry.unique_id)}}
         
