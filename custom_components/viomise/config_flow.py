@@ -7,10 +7,19 @@ import voluptuous as vol
 from miio import Device, DeviceException
 
 from homeassistant import config_entries
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
 
-from .const import CONF_HOST, CONF_NAME, CONF_TOKEN, DOMAIN
+from .const import (
+    CONF_COMMAND_COOLDOWN,
+    CONF_HOST,
+    CONF_NAME,
+    CONF_SCAN_INTERVAL,
+    CONF_TOKEN,
+    DEFAULT_COMMAND_COOLDOWN,
+    DEFAULT_SCAN_INTERVAL,
+    DOMAIN,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,6 +38,12 @@ async def validate_input(hass: HomeAssistant, host: str, token: str) -> dict:
 class ViomiVacuumConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Viomi SE."""
     VERSION = 1
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> config_entries.OptionsFlow:
+        """Get the options flow for this handler."""
+        return OptionsFlowHandler(config_entry)
 
     async def async_step_user(self, user_input=None) -> FlowResult:
         """Handle the initial step of the user configuration."""
@@ -57,3 +72,35 @@ class ViomiVacuumConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Optional(CONF_NAME, default="Viomi SE"): str,
         })
         return self.async_show_form(step_id="user", data_schema=data_schema, errors=errors)
+
+class OptionsFlowHandler(config_entries.OptionsFlow):
+    """Handle an options flow for Viomi SE."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Initialize options flow."""
+        self.config_entry = config_entry
+
+    async def async_step_init(self, user_input: dict | None = None) -> FlowResult:
+        """Manage the options."""
+        if user_input is not None:
+            return self.async_create_entry(title="", data=user_input)
+
+        # Formulário com ambos os campos
+        schema = vol.Schema(
+            {
+                vol.Optional(
+                    CONF_COMMAND_COOLDOWN,
+                    default=self.config_entry.options.get(
+                        CONF_COMMAND_COOLDOWN, DEFAULT_COMMAND_COOLDOWN
+                    ),
+                ): vol.All(vol.Coerce(float), vol.Range(min=0.5, max=10)),
+                vol.Optional(
+                    CONF_SCAN_INTERVAL,
+                    default=self.config_entry.options.get(
+                        CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
+                    ),
+                ): vol.All(vol.Coerce(int), vol.Range(min=5, max=600)),
+            }
+        )
+        return self.async_show_form(step_id="init", data_schema=schema)
+
