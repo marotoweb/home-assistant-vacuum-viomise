@@ -6,7 +6,12 @@ from datetime import timedelta
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-from homeassistant.components.vacuum import StateVacuumEntity, VacuumEntityFeature
+# CORREÇÃO: Importar VacuumActivity e remover StateVacuumEntity (não é mais necessária com a nova abordagem)
+from homeassistant.components.vacuum import (
+    VacuumEntity,
+    VacuumEntityFeature,
+    VacuumActivity,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -18,7 +23,16 @@ from .coordinator import ViomiSECoordinator
 _LOGGER = logging.getLogger(__name__)
 
 # Mappings
-STATE_CODE_TO_STATE = {0: "Idle", 1: "Idle", 2: "Paused", 3: "Cleaning", 4: "Returning", 5: "Docked", 6: "Mopping"}
+# CORREÇÃO: Mapear para a enumeração VacuumActivity
+STATE_CODE_TO_ACTIVITY = {
+    0: VacuumActivity.IDLE,
+    1: VacuumActivity.IDLE,
+    2: VacuumActivity.PAUSED,
+    3: VacuumActivity.CLEANING,
+    4: VacuumActivity.RETURNING,
+    5: VacuumActivity.DOCKED,
+    6: VacuumActivity.CLEANING, # Mopping é uma forma de cleaning
+}
 FAN_SPEEDS = {"Silent": 0, "Standard": 1, "Medium": 2, "Turbo": 3}
 FAN_SPEEDS_REVERSE = {v: k for k, v in FAN_SPEEDS.items()}
 WATER_LEVELS = {"Low": 11, "Medium": 12, "High": 13}
@@ -27,18 +41,18 @@ MOP_PATTERNS = {"Standard": 0, "Y-type": 1}
 MOP_PATTERNS_REVERSE = {v: k for k, v in MOP_PATTERNS.items()}
 CONSUMABLES = {"main_brush": 5, "side_brush": 6, "filter": 7, "mop": 8}
 
-# Supported features
+# CORREÇÃO: Remover a feature BATTERY
 SUPPORT_VIOMISE = (
     VacuumEntityFeature.PAUSE | VacuumEntityFeature.STOP | VacuumEntityFeature.RETURN_HOME |
-    VacuumEntityFeature.FAN_SPEED | VacuumEntityFeature.BATTERY | VacuumEntityFeature.STATUS |
+    VacuumEntityFeature.FAN_SPEED | VacuumEntityFeature.STATUS |
     VacuumEntityFeature.SEND_COMMAND | VacuumEntityFeature.LOCATE | VacuumEntityFeature.CLEAN_SPOT |
     VacuumEntityFeature.START
 )
 
 # Service Schemas
-SERVICE_SET_WATER_LEVEL_SCHEMA = vol.Schema({vol.Required('entity_id'): cv.entity_id, vol.Required('water_level'): vol.In(list(WATER_LEVELS.keys()))})
-SERVICE_SET_MOP_PATTERN_SCHEMA = vol.Schema({vol.Required('entity_id'): cv.entity_id, vol.Required('mop_pattern'): vol.In(list(MOP_PATTERNS.keys()))})
-SERVICE_RESET_CONSUMABLE_SCHEMA = vol.Schema({vol.Required('entity_id'): cv.entity_id, vol.Required('consumable'): vol.In(list(CONSUMABLES.keys()))})
+SERVICE_SET_WATER_LEVEL_SCHEMA = vol.Schema({vol.Required('water_level'): vol.In(list(WATER_LEVELS.keys()))})
+SERVICE_SET_MOP_PATTERN_SCHEMA = vol.Schema({vol.Required('mop_pattern'): vol.In(list(MOP_PATTERNS.keys()))})
+SERVICE_RESET_CONSUMABLE_SCHEMA = vol.Schema({vol.Required('consumable'): vol.In(list(CONSUMABLES.keys()))})
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
@@ -47,7 +61,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     async_add_entities([ViomiSE(coordinator, entry)])
 
 
-class ViomiSE(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
+class ViomiSE(CoordinatorEntity[ViomiSECoordinator], VacuumEntity):
     """Representation of a Viomi SE (v19) Vacuum cleaner."""
     _attr_should_poll = False
     _attr_has_entity_name = True
@@ -69,6 +83,20 @@ class ViomiSE(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
         self._attr_fan_speed_list = list(FAN_SPEEDS.keys())
         self._attr_supported_features = SUPPORT_VIOMISE
         self._extra_attributes = {}
+        self._activity = VacuumActivity.IDLE # Default activity
+        self._fan_speed = None
+
+    # CORREÇÃO: Implementar a propriedade 'activity'
+    @property
+    def activity(self) -> VacuumActivity | None:
+        """Return the current vacuum activity."""
+        return self._activity
+        
+    # CORREÇÃO: Implementar a propriedade 'fan_speed'
+    @property
+    def fan_speed(self) -> str | None:
+        """Return the current fan speed."""
+        return self._fan_speed
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -80,10 +108,12 @@ class ViomiSE(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
 
         self._attr_available = True
         data = self.coordinator.data
-        self._attr_battery_level = data[0]
-        self._attr_state = STATE_CODE_TO_STATE.get(data[1], "Unknown")
-        self._attr_fan_speed = FAN_SPEEDS_REVERSE.get(data[2])
         
+        # Mapear dados para as propriedades
+        self._activity = STATE_CODE_TO_ACTIVITY.get(data[1], VacuumActivity.IDLE)
+        self._fan_speed = FAN_SPEEDS_REVERSE.get(data[2])
+        
+        # CORREÇÃO: Processamento de atributos mais seguro
         self._extra_attributes = {
             "cleaning_time": str(timedelta(seconds=data[3] or 0)),
             "cleaned_area": data[4],
@@ -94,6 +124,7 @@ class ViomiSE(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
             "water_level": WATER_LEVELS_REVERSE.get(data[9]),
             "mop_installed": "Yes" if data[10] == 1 else "No",
             "mop_pattern": MOP_PATTERNS_REVERSE.get(data[11]),
+            "last_run_state": data[1], # Adicionar o estado raw para depuração
         }
         self.async_write_ha_state()
 
@@ -103,6 +134,7 @@ class ViomiSE(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
 
     # --- Control Methods ---
     async def _execute_and_refresh(self, method, *args):
+        """Execute a command and then trigger a coordinator refresh."""
         await self.hass.async_add_executor_job(method, *args)
         await self.coordinator.async_request_refresh()
 
@@ -136,29 +168,16 @@ class ViomiSE(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
         if (siid := CONSUMABLES.get(consumable)) is not None:
             await self._execute_and_refresh(self._device.send, "set_properties", [{"did": f"reset_{consumable}", "siid": siid, "piid": 1, "value": 100}])
 
-    # CORREÇÃO: Revertido para o método de registo de serviço mais compatível.
+    # CORREÇÃO: Usar o registo de serviços a nível de plataforma
     async def async_added_to_hass(self) -> None:
         """Run when entity is added to hass, and register services."""
         await super().async_added_to_hass()
         
-        @callback
-        def _async_handle_service(service_call: ServiceCall, method):
-            """Helper to handle service calls."""
-            # Filtra para garantir que o serviço é para esta entidade específica
-            if service_call.data.get("entity_id") != self.entity_id:
-                return
-            
-            # Remove entity_id dos dados antes de passar para o método
-            params = {key: value for key, value in service_call.data.items() if key != "entity_id"}
-            self.hass.async_create_task(method(**params))
+        platform = self.platform
+        if not hasattr(platform, "async_register_entity_service"):
+            _LOGGER.warning("Cannot register entity services on this Home Assistant version.")
+            return
 
-        self.hass.services.async_register(
-            DOMAIN, "set_water_level", lambda call: _async_handle_service(call, self.async_set_water_level), schema=SERVICE_SET_WATER_LEVEL_SCHEMA
-        )
-        self.hass.services.async_register(
-            DOMAIN, "set_mop_pattern", lambda call: _async_handle_service(call, self.async_set_mop_pattern), schema=SERVICE_SET_MOP_PATTERN_SCHEMA
-        )
-        self.hass.services.async_register(
-            DOMAIN, "reset_consumable", lambda call: _async_handle_service(call, self.async_reset_consumable), schema=SERVICE_RESET_CONSUMABLE_SCHEMA
-        )
-
+        platform.async_register_entity_service("set_water_level", SERVICE_SET_WATER_LEVEL_SCHEMA, self.async_set_water_level)
+        platform.async_register_entity_service("set_mop_pattern", SERVICE_SET_MOP_PATTERN_SCHEMA, self.async_set_mop_pattern)
+        platform.async_register_entity_service("reset_consumable", SERVICE_RESET_CONSUMABLE_SCHEMA, self.async_reset_consumable)
