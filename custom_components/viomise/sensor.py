@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import logging
 
-from homeassistant.components.sensor import SensorEntity, SensorStateClass
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorStateClass,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE, EntityCategory
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity import EntityDescription
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -17,38 +20,45 @@ from .coordinator import ViomiSECoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-# CORREÇÃO: Removido 'unit_of_measurement' da EntityDescription.
-SENSOR_DESCRIPTIONS: tuple[EntityDescription, ...] = (
-    EntityDescription(key="main_brush_left", name="Main Brush Life", icon="mdi:brush"),
-    EntityDescription(key="side_brush_left", name="Side Brush Life", icon="mdi:brush-off"),
-    EntityDescription(key="filter_left", name="Filter Life", icon="mdi:air-filter"),
-    EntityDescription(key="mop_left", name="Mop Life", icon="mdi:hydro-power"),
-)
-# Map key to data index from coordinator
-SENSOR_DATA_INDEX = {"main_brush_left": 5, "side_brush_left": 6, "filter_left": 7, "mop_left": 8}
+# Definição dos sensores
+# CORREÇÃO: Vamos definir cada sensor individualmente para máxima compatibilidade
+SENSORS_MAPPING = {
+    "battery": {"name": "Battery", "icon": "mdi:battery", "unit": PERCENTAGE, "device_class": SensorDeviceClass.BATTERY, "data_index": 0},
+    "main_brush_left": {"name": "Main Brush Life", "icon": "mdi:brush", "unit": PERCENTAGE, "device_class": None, "data_index": 5},
+    "side_brush_left": {"name": "Side Brush Life", "icon": "mdi:brush-off", "unit": PERCENTAGE, "device_class": None, "data_index": 6},
+    "filter_left": {"name": "Filter Life", "icon": "mdi:air-filter", "unit": PERCENTAGE, "device_class": None, "data_index": 7},
+    "mop_left": {"name": "Mop Life", "icon": "mdi:hydro-power", "unit": PERCENTAGE, "device_class": None, "data_index": 8},
+}
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     """Set up the Viomi SE sensor platform."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
-    entities = [ViomiSEConsumableSensor(coordinator, entry, description) for description in SENSOR_DESCRIPTIONS]
+    entities = [
+        ViomiSESensor(coordinator, entry, sensor_key)
+        for sensor_key in SENSORS_MAPPING
+    ]
     async_add_entities(entities)
 
 
-class ViomiSEConsumableSensor(CoordinatorEntity[ViomiSECoordinator], SensorEntity):
-    """A sensor for a Viomi SE consumable."""
+class ViomiSESensor(CoordinatorEntity[ViomiSECoordinator], SensorEntity):
+    """A sensor for a Viomi SE property."""
     _attr_has_entity_name = True
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_entity_category = EntityCategory.DIAGNOSTIC
-    
-    # CORREÇÃO: Definir a unidade de medida nativa como um atributo da classe.
-    _attr_native_unit_of_measurement = PERCENTAGE
 
-    def __init__(self, coordinator: ViomiSECoordinator, config_entry: ConfigEntry, description: EntityDescription):
+    def __init__(self, coordinator: ViomiSECoordinator, config_entry: ConfigEntry, sensor_key: str):
         """Initialize the sensor."""
         super().__init__(coordinator)
-        self.entity_description = description
-        self._attr_unique_id = f"{config_entry.unique_id}_{description.key}"
+        self._sensor_key = sensor_key
+        sensor_info = SENSORS_MAPPING[sensor_key]
+
+        self._attr_unique_id = f"{config_entry.unique_id}_{sensor_key}"
+        self._attr_name = sensor_info["name"]
+        self._attr_icon = sensor_info["icon"]
+        self._attr_native_unit_of_measurement = sensor_info["unit"]
+        self._attr_device_class = sensor_info["device_class"]
+        
         self._attr_device_info = {"identifiers": {(DOMAIN, config_entry.unique_id)}}
         
     @callback
@@ -56,9 +66,8 @@ class ViomiSEConsumableSensor(CoordinatorEntity[ViomiSECoordinator], SensorEntit
         """Handle updated data from the coordinator."""
         if self.coordinator.data:
             self._attr_available = True
-            data_index = SENSOR_DATA_INDEX[self.entity_description.key]
+            data_index = SENSORS_MAPPING[self._sensor_key]["data_index"]
             value = self.coordinator.data[data_index]
-            # Alguns valores podem vir como strings, garantir que são numéricos
             try:
                 self._attr_native_value = int(value)
             except (ValueError, TypeError):
