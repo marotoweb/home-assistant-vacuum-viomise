@@ -30,5 +30,24 @@
                 }
             }
         }
+    },
+    "entity": {
+        "sensor": {
+            "battery": {
+                "name": "Bateria"
+            },
+            "main_brush_left": {
+                "name": "Vida útil da escova principal"
+            },
+            "side_brush_left": {
+                "name": "Vida útil da escova lateral"
+            },
+            "filter_left": {
+                "name": "Vida útil do filtro"
+            },
+            "mop_left": {
+                "name": "Vida útil da mopa"
+            }
+        }
     }
 }
