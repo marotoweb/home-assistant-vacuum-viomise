@@ -2,6 +2,7 @@
 """Custom Component para Viomi Vacuum no Home Assistant, fiel ao original."""
 import asyncio
 import logging
+import time
 from functools import partial
 
 import voluptuous as vol
@@ -55,8 +56,13 @@ SERVICE_SCHEMA_CLEAN_POINT = VACUUM_SERVICE_SCHEMA.extend({vol.Required(ATTR_POI
 SERVICE_TO_METHOD = {SERVICE_CLEAN_ZONE: {"method": "async_clean_zone", "schema": SERVICE_SCHEMA_CLEAN_ZONE}, SERVICE_GOTO: {"method": "async_goto", "schema": SERVICE_SCHEMA_GOTO}, SERVICE_CLEAN_SEGMENT: {"method": "async_clean_segment", "schema": SERVICE_SCHEMA_CLEAN_SEGMENT}, SERVICE_CLEAN_POINT: {"method": "async_clean_point", "schema": SERVICE_SCHEMA_CLEAN_POINT}}
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
-    coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
-    mirobo = MiroboVacuum2(coordinator, entry)
+    # Ler os dados que o __init__.py preparou
+    integration_data = hass.data[DOMAIN][entry.entry_id]
+    coordinator = integration_data["coordinator"]
+    cooldown = integration_data["cooldown"]
+    
+    # Passar o cooldown para a entidade
+    mirobo = MiroboVacuum2(coordinator, entry, cooldown)
     async_add_entities([mirobo], update_before_add=True)
     
     async def async_service_handler(service):
@@ -76,12 +82,15 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
     _attr_has_entity_name = True
     _attr_name = None
 
-    def __init__(self, coordinator: ViomiSECoordinator, config_entry: ConfigEntry):
+    def __init__(self, coordinator: ViomiSECoordinator, config_entry: ConfigEntry, command_cooldown: float):
         super().__init__(coordinator)
         self._vacuum = coordinator.vacuum
         self._attr_unique_id = config_entry.unique_id
         self._last_clean_point = None
         self._attr_device_info = {"identifiers": {(DOMAIN, self.unique_id)}, "name": config_entry.title, "manufacturer": "Viomi", "model": "V-RVCLM21A (SE)"}
+        self._last_command_time = 0
+        # Guardar o valor do cooldown
+        self._command_cooldown = command_cooldown
 
 
     # Adicionar a propriedade 'activity'
@@ -114,6 +123,18 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
         return SUPPORT_XIAOMI
 
     async def _try_command(self, mask_error, func, *args, **kwargs):
+        """Call a vacuum command with debounce and error handling."""
+        now = time.time()
+        # Usar o valor configurável
+        if now - self._last_command_time < self._command_cooldown:
+            _LOGGER.warning(
+                "Command ignored: still cooling down from previous command (cooldown: %s s)",
+                self._command_cooldown
+            )
+            return False
+        
+        self._last_command_time = now
+
         try:
             await self.hass.async_add_executor_job(partial(func, *args, **kwargs))
             await self.coordinator.async_request_refresh()
