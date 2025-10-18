@@ -47,9 +47,9 @@ class ViomiSECoordinator(DataUpdateCoordinator[list]):
                 self.device.send, "get_properties", properties_to_fetch
             )
             
-            # CORREÇÃO: Verificar o 'code' de cada resultado. Se for diferente de 0, o valor é inválido.
+            # Check the 'code' of each result. If it's not 0, the value is invalid.
             return [res.get('value') if res.get('code') == 0 else None for res in results]
 
         except DeviceException as e:
             raise UpdateFailed(f"Error communicating with device: {e}") from e
-git
+
