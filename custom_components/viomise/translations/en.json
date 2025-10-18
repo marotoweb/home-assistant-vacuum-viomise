@@ -1,49 +1,34 @@
 {
-  "config": {
-    "step": {
-      "user": {
-        "title": "Viomi SE Setup",
-        "description": "Enter the connection details for your Viomi SE vacuum.",
-        "data": {
-          "name": "Name",
-          "host": "IP Address",
-          "token": "Token"
+    "config": {
+        "step": {
+            "user": {
+                "title": "Configure Viomi Vacuum",
+                "description": "Enter connection details for your Viomi Vacuum.",
+                "data": {
+                    "host": "IP Address",
+                    "token": "Token",
+                    "name": "Device Name"
+                }
+            }
+        },
+        "error": {
+            "cannot_connect": "Failed to connect to the device. Check the IP and token.",
+            "unknown": "An unknown error occurred."
+        },
+        "abort": {
+            "already_configured": "Device is already configured."
         }
-      }
     },
-    "error": {
-      "cannot_connect": "Failed to connect. Please check the IP address and token.",
-      "unknown": "An unknown error occurred."
-    },
-    "abort": {
-      "already_configured": "This device is already configured."
-    }
-  },
-  "options": {
-    "step": {
-      "init": {
-        "title": "Viomi SE Settings",
-        "description": "Adjust the integration settings.",
-        "data": {
-          "scan_interval": "Update Interval (seconds, min 5)"
+    "options": {
+        "step": {
+            "init": {
+                "title": "Viomi SE Options",
+                "description": "Adjust the timing options for the integration.",
+                "data": {
+                    "command_cooldown": "Command Cooldown (seconds)",
+                    "scan_interval": "Update Interval (seconds)"
+                }
+            }
         }
-      }
     }
-  },
-  "entity": {
-    "sensor": {
-      "main_brush_left": {
-        "name": "Main brush life"
-      },
-      "side_brush_left": {
-        "name": "Side brush life"
-      },
-      "filter_left": {
-        "name": "Filter life"
-      },
-      "mop_left": {
-        "name": "Mop life"
-      }
-    }
-  }
 }
