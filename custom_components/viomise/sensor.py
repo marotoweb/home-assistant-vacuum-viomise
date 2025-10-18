@@ -17,14 +17,12 @@ from .coordinator import ViomiSECoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-# Describes the sensors that will be created.
-# CORREÇÃO: Removido 'state_class' e 'entity_category' da EntityDescription
-# para garantir compatibilidade com versões mais antigas do HA.
+# CORREÇÃO: Removido 'unit_of_measurement' da EntityDescription.
 SENSOR_DESCRIPTIONS: tuple[EntityDescription, ...] = (
-    EntityDescription(key="main_brush_left", name="Main Brush Life", icon="mdi:brush", unit_of_measurement=PERCENTAGE),
-    EntityDescription(key="side_brush_left", name="Side Brush Life", icon="mdi:brush-off", unit_of_measurement=PERCENTAGE),
-    EntityDescription(key="filter_left", name="Filter Life", icon="mdi:air-filter", unit_of_measurement=PERCENTAGE),
-    EntityDescription(key="mop_left", name="Mop Life", icon="mdi:hydro-power", unit_of_measurement=PERCENTAGE),
+    EntityDescription(key="main_brush_left", name="Main Brush Life", icon="mdi:brush"),
+    EntityDescription(key="side_brush_left", name="Side Brush Life", icon="mdi:brush-off"),
+    EntityDescription(key="filter_left", name="Filter Life", icon="mdi:air-filter"),
+    EntityDescription(key="mop_left", name="Mop Life", icon="mdi:hydro-power"),
 )
 # Map key to data index from coordinator
 SENSOR_DATA_INDEX = {"main_brush_left": 5, "side_brush_left": 6, "filter_left": 7, "mop_left": 8}
@@ -40,25 +38,33 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 class ViomiSEConsumableSensor(CoordinatorEntity[ViomiSECoordinator], SensorEntity):
     """A sensor for a Viomi SE consumable."""
     _attr_has_entity_name = True
-    
-    # CORREÇÃO: Definir 'state_class' e 'entity_category' como atributos da classe
-    # em vez de na EntityDescription.
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_entity_category = EntityCategory.DIAGNOSTIC
+    
+    # CORREÇÃO: Definir a unidade de medida nativa como um atributo da classe.
+    _attr_native_unit_of_measurement = PERCENTAGE
 
     def __init__(self, coordinator: ViomiSECoordinator, config_entry: ConfigEntry, description: EntityDescription):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self.entity_description = description
         self._attr_unique_id = f"{config_entry.unique_id}_{description.key}"
-        
         self._attr_device_info = {"identifiers": {(DOMAIN, config_entry.unique_id)}}
         
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
         if self.coordinator.data:
+            self._attr_available = True
             data_index = SENSOR_DATA_INDEX[self.entity_description.key]
-            self._attr_native_value = self.coordinator.data[data_index]
-            self.async_write_ha_state()
+            value = self.coordinator.data[data_index]
+            # Alguns valores podem vir como strings, garantir que são numéricos
+            try:
+                self._attr_native_value = int(value)
+            except (ValueError, TypeError):
+                self._attr_native_value = None
+        else:
+            self._attr_available = False
+            
+        self.async_write_ha_state()
 
