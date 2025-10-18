@@ -28,8 +28,11 @@ _LOGGER = logging.getLogger(__name__)
 # --- CONSTANTES, SERVIÇOS E MAPEAMENTOS ---
 FAN_SPEEDS = {"Silent": 0, "Standard": 1, "Medium": 2, "Turbo": 3}
 FAN_SPEEDS_REVERSE = {v: k for k, v in FAN_SPEEDS.items()}
-SUPPORT_XIAOMI = (VacuumEntityFeature.PAUSE | VacuumEntityFeature.STOP | VacuumEntityFeature.RETURN_HOME | VacuumEntityFeature.FAN_SPEED | VacuumEntityFeature.LOCATE | VacuumEntityFeature.SEND_COMMAND | VacuumEntityFeature.BATTERY | VacuumEntityFeature.START | VacuumEntityFeature.STATE)
-
+SUPPORT_XIAOMI = (
+    VacuumEntityFeature.PAUSE | VacuumEntityFeature.STOP | VacuumEntityFeature.RETURN_HOME | 
+    VacuumEntityFeature.FAN_SPEED | VacuumEntityFeature.LOCATE | VacuumEntityFeature.SEND_COMMAND | 
+    VacuumEntityFeature.START | VacuumEntityFeature.STATE
+)
 # CORREÇÃO: Mapear para a enumeração VacuumActivity
 STATE_CODE_TO_ACTIVITY = {
     0: VacuumActivity.IDLE,      # Idle
