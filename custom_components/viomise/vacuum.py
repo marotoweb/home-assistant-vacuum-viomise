@@ -3,6 +3,7 @@
 import asyncio
 import logging
 from functools import partial
+import time
 
 import voluptuous as vol
 from miio import DeviceException, ViomiVacuum
@@ -85,11 +86,16 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
         self._attr_device_info = {"identifiers": {(DOMAIN, self.unique_id)}, "name": config_entry.title, "manufacturer": "Viomi", "model": "V-RVCLM21A (SE)"}
         # Adicionar um atributo local para a velocidade da ventoinha
         self._current_fan_speed = None
+        # Guardar o tempo do último comando otimista
+        self._last_optimistic_update = 0
 
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        # Quando recebemos dados reais do aspirador, atualizamos o nosso estado local
+        # Só aceitar a atualização do coordinator se não tivermos feito uma atualização otimista nos últimos 10 segundos.
+        if time.time() - self._last_optimistic_update < 10:
+            return
+
         if self.coordinator.data:
             speed = self.coordinator.data.get("suction_grade")
             self._current_fan_speed = FAN_SPEEDS_REVERSE.get(speed, speed)
@@ -141,7 +147,9 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
         
         # Atualizar o estado local otimista PRIMEIRO
         self._current_fan_speed = fan_speed
-        self.async_write_ha_state() # Notificar a UI da mudança imediata
+        # Registar o tempo do nosso comando otimista
+        self._last_optimistic_update = time.time()
+        self.async_write_ha_state()
 
         # Depois, enviar o comando para o aspirador
         await self._try_command("Unable to set fan speed", self._vacuum.raw_command, 'set_suction', [speed_value])
