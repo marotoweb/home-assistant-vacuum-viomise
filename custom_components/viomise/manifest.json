@@ -8,5 +8,5 @@
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/marotoweb/home-assistant-vacuum-viomise/issues",
   "requirements": ["python-miio>=0.5.12"],
-  "version": "2025.10.19-beta.2"
+  "version": "2025.10.19-beta.1"
 }
