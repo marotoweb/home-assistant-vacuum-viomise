@@ -1,78 +1,84 @@
+# This is the name of the workflow, which will be displayed on the Actions tab of your GitHub repository.
 name: Create and publish Release
 
+# This 'on' block defines the trigger for the workflow.
 on:
   push:
+    # The workflow will only run when a new tag is pushed to the repository.
     tags:
-      - 'v*'  # Apanha todas as tags que começam por "v"
+      - 'v*' # This pattern matches any tag that starts with 'v', e.g., v1.0, v2025.10.19
 
+# 'jobs' defines a sequence of tasks to be executed.
 jobs:
+  # This is the first job, responsible for updating the manifest.json and creating the release.
   create_release_from_tag:
-    name: Create GitHub Release
+    name: Create Release
+    # The job will run on the latest version of an Ubuntu virtual machine.
     runs-on: ubuntu-latest
-
     steps:
+      # Check out the repository's code.
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Extract version and prerelease info
-        id: version
-        run: |
-          TAG="${GITHUB_REF#refs/tags/}"
-          echo "Tag: $TAG"
-
-          # Extrai apenas a versão (ex: v2025.10.15_V2beta1 → 2025.10.15_V2beta1)
-          VERSION="${TAG#v}"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-          # Deteta se é uma pré-release (qualquer coisa depois de "_")
-          if [[ "$TAG" =~ _[Vv]?[0-9]*[AaBbRrCc]+[0-9]* ]]; then
-            echo "is_prerelease=true" >> $GITHUB_OUTPUT
-          else
-            echo "is_prerelease=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Update manifest version
-        run: |
-          VERSION=${{ steps.version.outputs.version }}
-          echo "Updating manifest.json to version $VERSION"
-          sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" custom_components/viomise/manifest.json
-          cat custom_components/viomise/manifest.json
-
+      # Update the version number in manifest.json.
+      # This is a crucial step for HACS. It reads the new version from the Git tag
+      # and updates the "version" field in the manifest.json file.
       - name: Commit updated manifest
         run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
+          # Configure git with a user name and email for the commit.
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # Extract the clean version number from the tag (e.g., "v2025.10.19" becomes "2025.10.19").
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/v,,')
+          
+          # Use 'sed' to find and replace the version line in the manifest.json file.
+          sed -i 's/"version": ".*"/"version": "'$VERSION'"/' custom_components/viomise/manifest.json
+          
+          # Stage the changed file, commit it, and push it back to the repository.
           git add custom_components/viomise/manifest.json
-          git commit -m "Update manifest version to ${{ steps.version.outputs.version }}" || echo "No changes to commit"
+          git commit -m "Bump version to $VERSION"
+          git push
 
+      # Create the GitHub Release.
+      # This action uses the tag information to create a corresponding release page.
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
         env:
+          # The GITHUB_TOKEN is a secret automatically provided by GitHub Actions.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          # 'tag_name' is the tag that triggered the workflow.
           tag_name: ${{ github.ref }}
+          # 'release_name' is the title of the release page.
           release_name: Release ${{ github.ref }}
+          # 'body' is the description of the release.
           body: |
             This is an automatically created release from tag ${{ github.ref }}.
+          # 'draft: false' means the release will be published immediately.
           draft: false
-          prerelease: ${{ steps.version.outputs.is_prerelease }}
+          # 'prerelease' is set to 'true' if the tag name contains 'alpha', 'beta', or 'rc'.
+          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
 
+  # This is the second job, which creates the .zip file asset and attaches it to the release.
   release_zip_file:
-    name: Upload release ZIP
+    name: Prepare release asset
     runs-on: ubuntu-latest
-    needs: create_release_from_tag
-
+    needs: [create_release_from_tag]
     steps:
-      - name: Checkout code
+      # Check out the repository's code again for this job.
+      - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: ZIP component files
+      # Create a .zip file of the integration's source code.
+      - name: ZIP files
         run: |
           cd custom_components/viomise
           zip -r ../../viomi_se.zip .
           ls -lh ../../viomi_se.zip
 
+      # Upload the created .zip file to the GitHub Release.
       - name: Upload zip to release
         uses: svenstaro/upload-release-action@v1-release
         with:
