@@ -286,5 +286,5 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
         """Clean around a specific point."""
         self._last_clean_point = point
         await self._try_command("Unable to clean point (uploadmap)", self._vacuum.raw_command, 'set_uploadmap', [0])
-        await self._try_command("Unable to clean point (set_pointclean)", self._vacuum.raw_command, 'set
+        await self._try_command("Unable to clean point (set_pointclean)", self._vacuum.raw_command, 'set_pointclean', [1, point[0], point[1]])
 
