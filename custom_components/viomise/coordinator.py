@@ -1,18 +1,21 @@
 # custom_components/viomise/coordinator.py
-# -*- coding: utf-8 -*-
-"""DataUpdateCoordinator for the Viomi SE integration, using the original update logic."""
+"""DataUpdateCoordinator for the Viomi SE integration."""
 import logging
 from datetime import timedelta
 
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from miio import DeviceException, ViomiVacuum
+
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.update_coordinator import (
+    DataUpdateCoordinator,
+    UpdateFailed,
+)
 
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-# The property list and mapping from your original, working vacuum.py
+# This list defines all the properties we want to fetch from the vacuum.
 ALL_PROPS = [
     "run_state", "mode", "err_state", "battary_life", "box_type", "mop_type",
     "s_time", "s_area", "suction_grade", "water_grade", "remember_map", "has_map",
@@ -21,6 +24,8 @@ ALL_PROPS = [
     "mop_percentage", "mop_left", "repeat_state", "mop_route"
 ]
 
+# This mapping is crucial for this specific vacuum model (viomi.vacuum.v19).
+# It translates the human-readable property names to the required siid/piid format.
 MAPPING = [
     {"did":"run_state","siid":2,"piid":1}, {"did":"mode","siid":2,"piid":18},
     {"did":"err_state","siid":2,"piid":2}, {"did":"battary_life","siid":3,"piid":1},
@@ -36,8 +41,9 @@ MAPPING = [
     {"did":"repeat_state","siid":4,"piid":1}, {"did":"mop_route","siid":4,"piid":6}
 ]
 
-class ViomiSECoordinator(DataUpdateCoordinator):
-    """Manages fetching data from the Viomi SE vacuum."""
+
+class ViomiSECoordinator(DataUpdateCoordinator[dict[str, any]]):
+    """Manages fetching data from the Viomi SE vacuum for all entities."""
 
     def __init__(self, hass: HomeAssistant, vacuum: ViomiVacuum, scan_interval: int):
         """Initialize the data update coordinator."""
@@ -49,22 +55,33 @@ class ViomiSECoordinator(DataUpdateCoordinator):
             update_interval=timedelta(seconds=scan_interval),
         )
 
-    async def _async_update_data(self) -> dict:
-        """Fetch data from the vacuum using the original dual-call method."""
+    async def _async_update_data(self) -> dict[str, any]:
+        """
+        Fetch data from the vacuum using the specific dual-call method.
+
+        This device model does not return all properties in a single call.
+        It requires two separate 'get_properties' calls, each with a maximum
+        of 12 properties.
+        """
         try:
-            # This is your original, correct logic.
+            # First call for the first 12 properties.
             properties = await self.hass.async_add_executor_job(
                 self.vacuum.raw_command, 'get_properties', MAPPING[:12]
             )
+            # Second call for the remaining properties.
             properties.extend(await self.hass.async_add_executor_job(
                 self.vacuum.raw_command, 'get_properties', MAPPING[12:]
             ))
 
-            # Extract only the values, checking for errors
+            # Extract only the 'value' from each returned dictionary,
+            # checking for errors (code != 0).
             state_values = [p.get('value') if p.get('code') == 0 else None for p in properties]
-            
-            # Return a dictionary, which is easier and safer to use
+
+            # Combine the property names (ALL_PROPS) with their fetched values
+            # into a single, easy-to-use dictionary.
             return dict(zip(ALL_PROPS, state_values))
 
         except DeviceException as e:
-            raise UpdateFailed(f"Error communicating with device: {e}") from e
+            # If communication fails, raise UpdateFailed to notify entities.
+            raise UpdateFailed(f"Error communicating with Viomi SE device: {e}") from e
+
