@@ -1,13 +1,17 @@
 # Viomi SE Vacuum Integration for Home Assistant (v2)
 
-## This is a custom component for [Home Assistant](https://www.home-assistant.io/ ) to integrate the Viomi SE Vacuum Cleaner (`viomi.vacuum.v19`) - apparently EU version - with 4.0.9_0012 firmware and tested in 4.0.9_0017
+This is a custom component for [Home Assistant](https://www.home-assistant.io/ ) to integrate the Viomi SE Vacuum Cleaner (`viomi.vacuum.v19`) - apparently EU version - with 4.0.9_0012 firmware and tested in 4.0.9_0017
 This version (v2) has been completely refactored to use modern Home Assistant practices, including UI-based configuration (`Config Flow`), device-specific sensors, and configurable options.
 
 <img src="https://github.com/home-assistant/brands/raw/master/custom_integrations/viomise/logo.png" width=48%> 
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg )](https://github.com/hacs/integration )
 
+---
+
 ## <a name="table-of-contents"></a>Table of Contents
+*   [What's New in v2?](#whats-new)
+*   [Upgrading from v1](#upgrading)
 *   [Features](#features)
 *   [Prerequisites](#prerequisites)
 *   [Installation](#installation)
@@ -16,27 +20,48 @@ This version (v2) has been completely refactored to use modern Home Assistant pr
 *   [Configuration](#configuration)
 *   [Options](#options)
 *   [Entities Provided](#entities)
-    *   [Vacuum](#vacuum-entity)
-    *   [Sensors](#sensor-entities)
 *   [Custom Services](#services)
+*   [Troubleshooting](#troubleshooting)
 *   [Contributions](#contributions)
-*   [License](#license)*   [Troubleshooting](#troubleshooting)
+*   [License](#license)
 
+---
+
+## <a name="whats-new"></a>🎉 What's New in v2? (The Modernization Update)
+
+Version 2 is a massive update that completely refactors the integration. If you are a new user, you can skip to the [Installation](#installation) section. If you are coming from v1, please read the [Upgrading](#upgrading) instructions below.
+
+*   **UI-Based Configuration**: No more YAML! The integration is now set up entirely through the Home Assistant interface.
+*   **Dedicated Sensors for Consumables**: Individual sensors for the remaining life of the **main brush, side brush, filter, and mop**.
+*   **Configurable Options**: You can now click "Configure" on the integration to adjust:
+    *   **Command Cooldown**: Time to wait between commands to prevent flooding the device.
+    *   **Update Interval**: How often to fetch status updates.
+*   **Improved Stability & Performance**: The integration now uses `DataUpdateCoordinator` for efficient data fetching and includes a command debounce mechanism to prevent errors.
+*   **Full Translation Support (EN/PT)** and a `services.yaml` file for a better user experience in the Developer Tools.
+
+---
+
+## <a name="upgrading"></a>⬆️ Upgrading from v1
+
+If you were using the old version of this integration with a `configuration.yaml` setup, please follow these steps to upgrade:
+
+1.  **Important: Make a backup of your Home Assistant configuration.**
+2.  **Remove** the old `vacuum:` entry for `viomise` from your `configuration.yaml` file.
+3.  Update the integration to the latest version via HACS (or by manually copying the new files).
+4.  **Restart Home Assistant**.
+5.  After restarting, go to **Settings > Devices & Services** and **add the Viomi SE integration through the UI**. You will be prompted for the IP Address and Token again.
+
+Your old entity names should be preserved if you use the same name during the new configuration.
 
 ---
 
 ## <a name="features"></a>✨ Features
 
-*   **UI Configuration**: No more `configuration.yaml`! Set up and configure the vacuum entirely through the Home Assistant user interface.
+*   **UI Configuration**: Set up and configure the vacuum entirely through the Home Assistant user interface.
 *   **Standard Vacuum Controls**: `start`, `pause`, `stop`, `return_to_base`, `locate`.
 *   **Fan Speed Control**: Adjust fan speeds (`Silent`, `Standard`, `Medium`, `Turbo`).
-*   **Consumable Sensors**: Dedicated sensors for the life percentage of:
-    *   Main Brush
-    *   Side Brush
-    *   Filter
-    *   Mop
-*   **Battery Sensor**: A dedicated sensor for the battery level.
-*   **Configurable Timings**: Adjust the **Command Cooldown** and **Update Interval** via the integration's options to fine-tune performance for your network.
+*   **Consumable & Battery Sensors**: Dedicated sensors for the life percentage of all consumables and the battery.
+*   **Configurable Timings**: Adjust command cooldown and update intervals via the integration's options.
 *   **Custom Services**: Advanced cleaning commands for zones, segments (rooms), and specific points.
 *   **Multi-language Support**: UI is translated into English and Portuguese.
 
@@ -52,7 +77,9 @@ The easiest way to get the token is by using the [Xiaomi Miot Auto](https://gith
 
 ## <a name="installation"></a>🚀 Installation
 
-This integration is now part of the default HACS repository!
+### <a name="hacs-installation"></a>HACS (Recommended)
+
+This integration is part of the default HACS repository!
 
 1.  Go to your HACS page in Home Assistant.
 2.  Click on **"Integrations"**.
@@ -101,21 +128,16 @@ After adding the integration, you can fine-tune its behavior.
 
 ## <a name="entities"></a>📦 Entities Provided
 
-### <a name="vacuum-entity"></a>Vacuum (`vacuum.viomi_se`)
+The integration creates a vacuum entity and several sensor entities, all linked to a single device.
 
-This is the main entity for controlling the vacuum. It provides standard controls and attributes showing the vacuum's status, such as `run_state`, `mode`, `cleaned_area`, etc.
-
-### <a name="sensor-entities"></a>Sensors (`sensor.*`)
-
-The integration creates the following diagnostic sensors, which you can add to your dashboards:
-
+*   `vacuum.viomi_se`
 *   `sensor.viomi_se_battery`
 *   `sensor.viomi_se_main_brush_life`
 *   `sensor.viomi_se_side_brush_life`
 *   `sensor.viomi_se_filter_life`
-*   `sensor.viomise_mop_life`
+*   `sensor.viomi_se_mop_life`
 
-*Note: The exact entity ID may vary slightly based on your Home Assistant naming conventions.*
+*Note: The exact entity ID may vary slightly based on the name you provide during setup.*
 
 ---
 
@@ -125,8 +147,8 @@ In addition to the standard vacuum services, this integration provides custom se
 
 | Service                       | Description                               | Parameters                                     |
 | ----------------------------- | ----------------------------------------- | ---------------------------------------------- |
-| `vacuum.vacuum_clean_segment` | Cleans one or more specific rooms/segments. | `segments`: A list of room IDs (e.g., `[1, 3]`). |
-| `vacuum.vacuum_clean_zone`    | Cleans a rectangular zone.                | `zone`: `[x1, y1, x2, y2]`, `repeats`: `1-3`.    |
+| `vacuum.vacuum_clean_segment` | Cleans one or more specific rooms/segments. | `segments`: A list of room IDs (e.g., `[16, 17]`). |
+| `vacuum.vacuum_clean_zone`    | Cleans a rectangular zone.                | `zone`: `[[x1, y1, x2, y2]]`, `repeats`: `1-3`.    |
 | `vacuum.vacuum_goto`          | Sends the vacuum to a specific coordinate.  | `x_coord`: X coordinate, `y_coord`: Y coordinate.  |
 | `vacuum.xiaomi_clean_point`   | Cleans around a specific point.           | `point`: `[x, y]`.                             |
 
@@ -163,4 +185,3 @@ Contributions are welcome! If you find a bug or have a suggestion for a new feat
 ## <a name="license"></a>📄 License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
