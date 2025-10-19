@@ -1,0 +1,75 @@
+# Describes the custom services for the Viomi SE integration.
+
+vacuum_clean_segment:
+  name: Clean Segment(s)
+  description: "Cleans one or more specific rooms (segments) identified by the vacuum's map."
+  fields:
+    segments:
+      name: Segments
+      description: "A list of room/segment IDs to clean."
+      required: true
+      example: "[16, 17]"
+      selector:
+        object: {}
+
+vacuum_clean_zone:
+  name: Clean Zone
+  description: "Cleans a specified rectangular zone one or more times."
+  fields:
+    zone:
+      name: Zone
+      description: "A list of one or more zones to clean. Each zone is a list of four coordinates [x1, y1, x2, y2]."
+      required: true
+      example: "[[25500, 25500, 27500, 27500]]"
+      selector:
+        object: {}
+    repeats:
+      name: Repeats
+      description: "The number of times to repeat the zone cleaning (1 to 3 times)."
+      required: true
+      example: 1
+      selector:
+        number:
+          min: 1
+          max: 3
+          mode: box
+
+vacuum_goto:
+  name: Go To Point
+  description: "Commands the vacuum to go to a specific coordinate on the map."
+  fields:
+    x_coord:
+      name: X-Coordinate
+      description: "The X-coordinate to go to."
+      required: true
+      example: 25500
+      selector:
+        number:
+          min: 0
+          max: 50000
+          mode: box
+          step: 100
+    y_coord:
+      name: Y-Coordinate
+      description: "The Y-coordinate to go to."
+      required: true
+      example: 25500
+      selector:
+        number:
+          min: 0
+          max: 50000
+          mode: box
+          step: 100
+
+xiaomi_clean_point:
+  name: Clean Around Point
+  description: "Commands the vacuum to perform a spot cleaning around a specific coordinate."
+  fields:
+    point:
+      name: Point
+      description: "A list containing the [X, Y] coordinates for the spot cleaning."
+      required: true
+      example: "[25500, 25500]"
+      selector:
+        object: {}
+

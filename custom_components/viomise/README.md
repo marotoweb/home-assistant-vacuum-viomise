@@ -19,7 +19,9 @@ This version (v2) has been completely refactored to use modern Home Assistant pr
     *   [Vacuum](#vacuum-entity)
     *   [Sensors](#sensor-entities)
 *   [Custom Services](#services)
-*   [Troubleshooting](#troubleshooting)
+*   [Contributions](#contributions)
+*   [License](#license)*   [Troubleshooting](#troubleshooting)
+
 
 ---
 
@@ -151,4 +153,14 @@ data:
     ```
 
 ---
+
+## <a name="contributions"></a>🤝 Contributions
+
+Contributions are welcome! If you find a bug or have a suggestion for a new feature, please [open an issue](https://github.com/marotoweb/home-assistant-vacuum-viomise/issues ) or submit a [pull request](https://github.com/marotoweb/home-assistant-vacuum-viomise/pulls ).
+
+---
+
+## <a name="license"></a>📄 License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 

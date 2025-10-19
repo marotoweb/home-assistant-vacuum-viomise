@@ -1,97 +1,166 @@
-# Viomi SE (V-RVCLM21A) Vacuum Integration for Home Assistant
+# Viomi SE Vacuum Integration for Home Assistant (v2)
 
-## This is for Viomi Robot Vacuum Cleaner SE (apparently EU version) with 4.0.9_0012 firmware and tested in 4.0.9_0017
+## This is a custom component for [Home Assistant](https://www.home-assistant.io/ ) to integrate the Viomi SE Vacuum Cleaner (`viomi.vacuum.v19`) - apparently EU version - with 4.0.9_0012 firmware and tested in 4.0.9_0017
+This version (v2) has been completely refactored to use modern Home Assistant practices, including UI-based configuration (`Config Flow`), device-specific sensors, and configurable options.
 
 <img src="https://github.com/home-assistant/brands/raw/master/custom_integrations/viomise/logo.png" width=48%> 
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg )](https://github.com/hacs/integration )
 
-This is a custom component for [Home Assistant](https://www.home-assistant.io/ ) to integrate the **Viomi SE Vacuum Cleaner** (`viomi.vacuum.v19`).
+## <a name="table-of-contents"></a>Table of Contents
+*   [Features](#features)
+*   [Prerequisites](#prerequisites)
+*   [Installation](#installation)
+    *   [HACS (Recommended)](#hacs-installation)
+    *   [Manual Installation](#manual-installation)
+*   [Configuration](#configuration)
+*   [Options](#options)
+*   [Entities Provided](#entities)
+    *   [Vacuum](#vacuum-entity)
+    *   [Sensors](#sensor-entities)
+*   [Custom Services](#services)
+*   [Contributions](#contributions)
+*   [License](#license)*   [Troubleshooting](#troubleshooting)
 
-It provides a vacuum entity that allows you to control your vacuum cleaner and monitor its status directly from Home Assistant.
 
-This integration communicates with the device locally, so it does not require a cloud connection.
+---
 
-## Features
+## <a name="features"></a>✨ Features
 
-*   Start, stop, and pause cleaning.
-*   Return to the charging dock.
-*   Locate the vacuum (makes it play a sound).
-*   Adjust fan speed (Silent, Standard, Medium, Turbo).
-*   Monitor status (cleaning, docked, charging, etc.).
-*   Check battery level.
-*   View error states.
+*   **UI Configuration**: No more `configuration.yaml`! Set up and configure the vacuum entirely through the Home Assistant user interface.
+*   **Standard Vacuum Controls**: `start`, `pause`, `stop`, `return_to_base`, `locate`.
+*   **Fan Speed Control**: Adjust fan speeds (`Silent`, `Standard`, `Medium`, `Turbo`).
+*   **Consumable Sensors**: Dedicated sensors for the life percentage of:
+    *   Main Brush
+    *   Side Brush
+    *   Filter
+    *   Mop
+*   **Battery Sensor**: A dedicated sensor for the battery level.
+*   **Configurable Timings**: Adjust the **Command Cooldown** and **Update Interval** via the integration's options to fine-tune performance for your network.
+*   **Custom Services**: Advanced cleaning commands for zones, segments (rooms), and specific points.
+*   **Multi-language Support**: UI is translated into English and Portuguese.
 
-## Prerequisites
+---
 
-1.  **Your Viomi SE vacuum must be connected to your local network.**
-2.  You need to know the **IP Address** of your vacuum. You can usually find this in your router's DHCP client list. It's recommended to assign a static IP address to your vacuum.
-3.  You need the **Device Token**. This is a 32-character string required to communicate with the device.
+## <a name="prerequisites"></a>📋 Prerequisites
 
-### How to get the device token?
+You need to obtain the **IP Address** and the **32-character Token** of your Viomi SE vacuum.
 
-Note: Vacuum token can be extracted by following [this guide](https://www.home-assistant.io/integrations/xiaomi_miio/#retrieving-the-access-token).
-I recommend using the python script method to extract the token as it is simpler, and only requires you to enter your Xiaomi Cloud username and password.
-These are the credentials used for the Xiaomi Home app (_not ones from Viomi Robot app_).
+The easiest way to get the token is by using the [Xiaomi Miot Auto](https://github.com/al-one/hass-xiaomi-miot ) integration, which can automatically discover tokens for devices on your network. Alternatively, you can use the [python-miio](https://python-miio.readthedocs.io/en/latest/discovery.html#obtaining-the-token ) tool.
 
-Another easiest way to get the token is by using the [Xiaomi Miio](https://github.com/jgh/python-miio ) command-line tool.
+---
 
-```bash
-# Install the tool
-pip install python-miio
+## <a name="installation"></a>🚀 Installation
 
-# Discover devices on your network
-miio discover
-```
+This integration is now part of the default HACS repository!
 
-The output will show you the IP address, device model, and the token for all Xiaomi devices on your network. Find your Viomi SE vacuum in the list and copy the token.
+1.  Go to your HACS page in Home Assistant.
+2.  Click on **"Integrations"**.
+3.  Click the **"Explore & Download Repositories"** button in the bottom right corner.
+4.  Search for **"Viomi SE Vacuum"**.
+5.  Click on the integration and then click **"Download"**.
+6.  Restart Home Assistant when prompted.
 
-## Installation
+### <a name="manual-installation"></a>Manual Installation
 
-The recommended way to install this integration is through the [Home Assistant Community Store (HACS)](https://hacs.xyz/ ).
+1.  Download the latest release from the [Releases](https://github.com/marotoweb/home-assistant-vacuum-viomise/releases ) page.
+2.  Unzip the downloaded file.
+3.  Copy the entire `viomise` folder (which contains all the necessary files like `__init__.py`, `vacuum.py`, `sensor.py`, etc.) into your Home Assistant's `custom_components` directory. The final path should look like `<config_directory>/custom_components/viomise`.
+4.  Restart Home Assistant.
 
-1.  **Add Custom Repository:**
-    *   Go to HACS > Integrations.
-    *   Click the three dots in the top right corner and select "Custom repositories".
-    *   In the "Repository" field, paste this GitHub URL: `https://github.com/marotoweb/home-assistant-vacuum-viomise`
-    *   In the "Category" dropdown, select "Integration".
-    *   Click "Add".
+---
 
-2.  **Install the Integration:**
-    *   The "Viomi SE Vacuum" integration will now appear in your HACS integrations list.
-    *   Click "Install" and follow the prompts.
+## <a name="configuration"></a>⚙️ Configuration
 
-3.  **Restart Home Assistant:**
-    *   After installation, you must restart Home Assistant for the integration to be loaded.
+Once the integration is installed and Home Assistant is restarted, you can add your vacuum via the UI.
 
-## Configuration
-
-Configuration is now done entirely through the Home Assistant user interface.
-
-1.  Navigate to **Settings > Devices & Services**.
+1.  Go to **Settings** > **Devices & Services**.
 2.  Click the **+ ADD INTEGRATION** button in the bottom right corner.
-3.  Search for **"Viomi SE Vacuum"** and click on it.
-4.  A configuration dialog will appear. Enter the following information:
-    *   **IP Address (Host ):** The local IP address of your vacuum cleaner.
-    *   **Token:** The 32-character device token you obtained earlier.
-5.  Click **Submit**.
+3.  Search for **"Viomi SE"** and click on it.
+4.  A configuration dialog will appear. Enter the following:
+    *   **Device Name**: A friendly name for your vacuum (e.g., "Viomi SE").
+    *   **IP Address**: The local IP address of your vacuum.
+    *   **Token**: The 32-character token you obtained earlier.
+5.  Click **"Submit"**.
 
-The integration will test the connection. If successful, your vacuum will be added to Home Assistant and you will see a new device and entity.
+If the details are correct, the integration will be added, and a new device with its entities will appear.
 
-## Lovelace Card
+---
 
-You can use the standard `vacuum-card` or other custom cards to control your vacuum from your Lovelace dashboard. Here is a basic example:
+## <a name="options"></a>🔧 Options
 
+After adding the integration, you can fine-tune its behavior.
+
+1.  Go to **Settings** > **Devices & Services**.
+2.  Find the Viomi SE integration and click on **"Configure"**.
+3.  You can adjust the following options:
+    *   **Command Cooldown (seconds)**: The minimum time to wait between sending commands to the vacuum. This prevents flooding the device with requests. (Default: `2.5`)
+    *   **Update Interval (seconds)**: How often to fetch status updates from the vacuum. (Default: `30`)
+
+---
+
+## <a name="entities"></a>📦 Entities Provided
+
+### <a name="vacuum-entity"></a>Vacuum (`vacuum.viomi_se`)
+
+This is the main entity for controlling the vacuum. It provides standard controls and attributes showing the vacuum's status, such as `run_state`, `mode`, `cleaned_area`, etc.
+
+### <a name="sensor-entities"></a>Sensors (`sensor.*`)
+
+The integration creates the following diagnostic sensors, which you can add to your dashboards:
+
+*   `sensor.viomi_se_battery`
+*   `sensor.viomi_se_main_brush_life`
+*   `sensor.viomi_se_side_brush_life`
+*   `sensor.viomi_se_filter_life`
+*   `sensor.viomise_mop_life`
+
+*Note: The exact entity ID may vary slightly based on your Home Assistant naming conventions.*
+
+---
+
+## <a name="services"></a>🛠️ Custom Services
+
+In addition to the standard vacuum services, this integration provides custom services for advanced cleaning modes. You can call these from scripts or automations.
+
+| Service                       | Description                               | Parameters                                     |
+| ----------------------------- | ----------------------------------------- | ---------------------------------------------- |
+| `vacuum.vacuum_clean_segment` | Cleans one or more specific rooms/segments. | `segments`: A list of room IDs (e.g., `[1, 3]`). |
+| `vacuum.vacuum_clean_zone`    | Cleans a rectangular zone.                | `zone`: `[x1, y1, x2, y2]`, `repeats`: `1-3`.    |
+| `vacuum.vacuum_goto`          | Sends the vacuum to a specific coordinate.  | `x_coord`: X coordinate, `y_coord`: Y coordinate.  |
+| `vacuum.xiaomi_clean_point`   | Cleans around a specific point.           | `point`: `[x, y]`.                             |
+
+**Example Service Call (in YAML):**
 ```yaml
-type: entity
-entity: vacuum.viomi_se
-name: Aspirador da Sala
+service: vacuum.vacuum_clean_segment
+target:
+  entity_id: vacuum.viomi_se
+data:
+  segments: [16, 17]
 ```
 
-## Contributions
+## <a name="troubleshooting"></a>❓ Troubleshooting
 
-Contributions are welcome! If you find a bug or have a suggestion for a new feature, please open an issue or submit a pull request.
+*   **"Failed to connect" error**: Double-check that the IP address is correct and that the vacuum is on the same network. The token might be incorrect or may have changed if you reset the vacuum's Wi-Fi.
+*   **Device is "Unavailable"**: This usually means Home Assistant cannot reach the vacuum at its IP address. Check your network and ensure the vacuum is online in the Mi Home app.
+*   **Logs**: To get more information, you can enable debug logging for the integration by adding the following to your `configuration.yaml`:
+    ```yaml
+    logger:
+      default: info
+      logs:
+        custom_components.viomise: debug
+        miio: debug
+    ```
 
-## License
+---
+
+## <a name="contributions"></a>🤝 Contributions
+
+Contributions are welcome! If you find a bug or have a suggestion for a new feature, please [open an issue](https://github.com/marotoweb/home-assistant-vacuum-viomise/issues ) or submit a [pull request](https://github.com/marotoweb/home-assistant-vacuum-viomise/pulls ).
+
+---
+
+## <a name="license"></a>📄 License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
