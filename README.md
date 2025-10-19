@@ -23,6 +23,7 @@ This version (v2025.10.19) has been completely refactored to use modern Home Ass
 *   [Entities Provided](#entities)
 *   [Custom Services](#services)
 *   [Troubleshooting](#troubleshooting)
+*   [Acknowledgements](#acknowledgements)
 *   [Contributions](#contributions)
 *   [License](#license)
 
@@ -174,6 +175,14 @@ data:
         custom_components.viomise: debug
         miio: debug
     ```
+
+---
+
+## <a name="acknowledgements"></a>Acknowledgements
+
+This integration was originally forked from the [home-assistant-vacuum-styj02ym](https://github.com/KrzysztofHajdamowicz/home-assistant-vacuum-styj02ym ) project, which provided the initial structural foundation.
+
+However, all the protocol research, including the discovery of how to use the specific `siid` and `piid` properties required to control the **Viomi SE (v19)** model, was done independently for this project. This reverse-engineering effort is the core of what makes this integration work for this specific vacuum model.
 
 ---
 
