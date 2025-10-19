@@ -17,8 +17,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # Check out the repository's code.
+      # We explicitly check out the 'main' branch.
+      # This ensures that we are on a branch and can push commits,
+      # avoiding the "detached HEAD" state that occurs when checking out a tag.
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: 'v2' # Or your default branch name
 
       # Update the version number in manifest.json.
       # This is a crucial step for HACS. It reads the new version from the Git tag
