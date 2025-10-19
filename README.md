@@ -1,7 +1,7 @@
 # Viomi SE Vacuum Integration for Home Assistant (v2)
 
 This is a custom component for [Home Assistant](https://www.home-assistant.io/ ) to integrate the Viomi SE Vacuum Cleaner (`viomi.vacuum.v19`) - apparently EU version - with 4.0.9_0012 firmware and tested in 4.0.9_0017
-This version (v2) has been completely refactored to use modern Home Assistant practices, including UI-based configuration (`Config Flow`), device-specific sensors, and configurable options.
+This version (v2025.10.19) has been completely refactored to use modern Home Assistant practices, including UI-based configuration (`Config Flow`), device-specific sensors, and configurable options.
 
 <img src="https://github.com/home-assistant/brands/raw/master/custom_integrations/viomise/logo.png" width=48%> 
 
@@ -29,7 +29,7 @@ This version (v2) has been completely refactored to use modern Home Assistant pr
 
 ## <a name="whats-new"></a>🎉 What's New in v2? (The Modernization Update)
 
-Version 2 is a massive update that completely refactors the integration. If you are a new user, you can skip to the [Installation](#installation) section. If you are coming from v1, please read the [Upgrading](#upgrading) instructions below.
+Version v2 (v2025.10.19) is a massive update that completely refactors the integration. If you are a new user, you can skip to the [Installation](#installation) section. If you are coming from form version v1 (v2025.02.09beta) or before, please read the [Upgrading](#upgrading) instructions below.
 
 *   **UI-Based Configuration**: No more YAML! The integration is now set up entirely through the Home Assistant interface.
 *   **Dedicated Sensors for Consumables**: Individual sensors for the remaining life of the **main brush, side brush, filter, and mop**.
