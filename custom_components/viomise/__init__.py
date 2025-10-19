@@ -3,6 +3,12 @@
 import logging
 import warnings
 
+# Suppress a specific FutureWarning from the underlying `miio` library.
+# This warning is related to a change in Python 3.13 and is not something
+# we can fix in this integration. This keeps the logs clean.
+warnings.filterwarnings("ignore", category=FutureWarning, module=r"miio\.miot_device")
+
+
 from miio import DeviceException, ViomiVacuum
 
 from homeassistant.config_entries import ConfigEntry
@@ -18,11 +24,6 @@ from .const import (
     DOMAIN,
 )
 from .coordinator import ViomiSECoordinator
-
-# Suppress a specific FutureWarning from the underlying `miio` library.
-# This warning is related to a change in Python 3.13 and is not something
-# we can fix in this integration. This keeps the logs clean.
-warnings.filterwarnings("ignore", category=FutureWarning, module=r"miio\.miot_device")
 
 # Define the platforms that this integration will set up.
 PLATFORMS: list[Platform] = [Platform.VACUUM, Platform.SENSOR]
