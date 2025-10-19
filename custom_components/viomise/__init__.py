@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 """The Viomi SE Vacuum integration."""
 import logging
+import warnings # Importar a biblioteca de avisos
 
 from miio import DeviceException, ViomiVacuum
 
@@ -18,6 +19,9 @@ from .const import (
     DEFAULT_SCAN_INTERVAL,
 )
 from .coordinator import ViomiSECoordinator
+
+# Suprime o FutureWarning da biblioteca miio, que não podemos controlar.
+warnings.filterwarnings("ignore", category=FutureWarning, module=r"miio\.miot_device")
 
 PLATFORMS: list[Platform] = [Platform.VACUUM, Platform.SENSOR]
 _LOGGER = logging.getLogger(__name__)
