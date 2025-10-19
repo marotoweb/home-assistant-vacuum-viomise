@@ -1,6 +1,7 @@
 # Viomi SE Vacuum Integration for Home Assistant (v2)
 
 This is a custom component for [Home Assistant](https://www.home-assistant.io/ ) to integrate the Viomi SE Vacuum Cleaner (`viomi.vacuum.v19`) - apparently EU version - with 4.0.9_0012 firmware and tested in 4.0.9_0017
+
 This version (v2025.10.19) has been completely refactored to use modern Home Assistant practices, including UI-based configuration (`Config Flow`), device-specific sensors, and configurable options.
 
 <img src="https://github.com/home-assistant/brands/raw/master/custom_integrations/viomise/logo.png" width=48%> 
