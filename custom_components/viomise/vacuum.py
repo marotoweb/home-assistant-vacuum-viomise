@@ -75,10 +75,10 @@ ATTR_SEGMENTS = "segments"
 ATTR_POINT = "point"
 
 # Schemas for the service calls.
-SERVICE_SCHEMA_CLEAN_ZONE = vol.Schema({vol.Required(ATTR_ZONE_ARRAY): vol.All(list, [vol.ExactSequence([vol.Coerce(float), vol.Coerce(float), vol.Coerce(float), vol.Coerce(float)])]), vol.Required(ATTR_ZONE_REPEATER): vol.All(vol.Coerce(int), vol.Clamp(min=1, max=3))})
-SERVICE_SCHEMA_GOTO = vol.Schema({vol.Required(ATTR_X_COORD): vol.Coerce(float), vol.Required(ATTR_Y_COORD): vol.Coerce(float)})
-SERVICE_SCHEMA_CLEAN_SEGMENT = vol.Schema({vol.Required(ATTR_SEGMENTS): vol.Any(vol.Coerce(int), [vol.Coerce(int)])})
-SERVICE_SCHEMA_CLEAN_POINT = vol.Schema({vol.Required(ATTR_POINT): vol.All(vol.ExactSequence([vol.Coerce(float), vol.Coerce(float)]))})
+SERVICE_SCHEMA_CLEAN_ZONE = vol.Schema({vol.Required(ATTR_ZONE_ARRAY): vol.All(list, [vol.ExactSequence([vol.Coerce(float), vol.Coerce(float), vol.Coerce(float), vol.Coerce(float)])]), vol.Required(ATTR_ZONE_REPEATER): vol.All(vol.Coerce(int), vol.Clamp(min=1, max=3))}, extra=vol.ALLOW_EXTRA)
+SERVICE_SCHEMA_GOTO = vol.Schema({vol.Required(ATTR_X_COORD): vol.Coerce(float), vol.Required(ATTR_Y_COORD): vol.Coerce(float)}, extra=vol.ALLOW_EXTRA)
+SERVICE_SCHEMA_CLEAN_SEGMENT = vol.Schema({vol.Required(ATTR_SEGMENTS): vol.Any(vol.Coerce(int), [vol.Coerce(int)])}, extra=vol.ALLOW_EXTRA)
+SERVICE_SCHEMA_CLEAN_POINT = vol.Schema({vol.Required(ATTR_POINT): vol.All(vol.ExactSequence([vol.Coerce(float), vol.Coerce(float)]))}, extra=vol.ALLOW_EXTRA)
 
 # Mapping from service names to the corresponding method.
 SERVICE_TO_METHOD = {
@@ -281,15 +281,14 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
         result = []
         i = 0
         for z in zone:
-            x1, y2, x2, y1 = z
+            x1, y1, x2, y2 = z[0], z[1], z[2], z[3]
             res = '_'.join(str(x) for x in [i, 0, x1, y1, x1, y2, x2, y2, x2, y1])
             for _ in range(repeats):
                 result.append(res)
                 i += 1
         result = [i] + result
-        if await self._try_command("clean_zone (uploadmap)", "Unable to set uploadmap for zone cleaning", self._vacuum.raw_command, 'set_uploadmap', [1]):
-            if await self._try_command("clean_zone (set_zone)", "Unable to send zone cleaning command", self._vacuum.raw_command, 'set_zone', result):
-                await self._try_command("clean_zone (set_mode)", "Unable to start zone cleaning mode", self._vacuum.raw_command, 'set_mode', [3, 1])
+        if await self._try_command("clean_zone (set_zone)", "Unable to send zone cleaning command", self._vacuum.raw_command, 'set_zone', result):
+            await self._try_command("clean_zone (set_mode)", "Unable to start zone cleaning mode", self._vacuum.raw_command, 'set_mode', [3, 1])
 
     async def async_goto(self, x_coord: float, y_coord: float):
         """Go to a specific coordinate."""
@@ -307,6 +306,5 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
     async def async_clean_point(self, point: list[float]):
         """Clean around a specific point."""
         self._last_clean_point = point
-        if await self._try_command("clean_point (uploadmap)", "Unable to set uploadmap for point cleaning", self._vacuum.raw_command, 'set_uploadmap', [0]):
-            await self._try_command("clean_point (set_pointclean)", "Unable to clean point", self._vacuum.raw_command, 'set_pointclean', [1, point[0], point[1]])
+        await self._try_command("clean_point (set_pointclean)", "Unable to clean point", self._vacuum.raw_command, 'set_pointclean', [1, point[0], point[1]])
 
