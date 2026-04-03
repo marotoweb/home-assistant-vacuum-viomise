@@ -21,6 +21,7 @@ from homeassistant.components.vacuum import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ENTITY_ID
 from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -91,7 +92,12 @@ SERVICE_TO_METHOD = {
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     """Set up the Viomi SE vacuum platform from a config entry."""
-    coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
+    try:
+        coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
+    except KeyError as e:
+        _LOGGER.error("Failed to get coordinator from hass.data: %s", e)
+        raise ConfigEntryNotReady(f"Coordinator not found for {config_entry.entry_id}") from e
+    
     vacuum_entity = MiroboVacuum2(coordinator, config_entry)
     async_add_entities([vacuum_entity])
 
@@ -141,7 +147,8 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
         # Store the entity in hass.data for the service handler to find it.
         hass = coordinator.hass
         if DOMAIN not in hass.data: hass.data[DOMAIN] = {}
-        hass.data[DOMAIN][config_entry.entry_id] = {'entity': self}
+        if config_entry.entry_id not in hass.data[DOMAIN]: hass.data[DOMAIN][config_entry.entry_id] = {}
+        hass.data[DOMAIN][config_entry.entry_id]['entity'] = self
 
     @property
     def supported_features(self) -> VacuumEntityFeature:

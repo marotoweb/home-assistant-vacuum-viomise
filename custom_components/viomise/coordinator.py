@@ -37,7 +37,7 @@ MAPPING = [
     {"did":"main_brush_percentage","siid":4,"piid":10}, {"did":"main_brush_left","siid":4,"piid":11},
     {"did":"side_brush_percentage","siid":4,"piid":8}, {"did":"side_brush_left","siid":4,"piid":9},
     {"did":"filter_percentage","siid":4,"piid":12}, {"did":"filter_left","siid":4,"piid":13},
-    {"did":"mop_left_percentage","siid":4,"piid":14}, {"did":"mop_left","siid":4,"piid":15},
+    {"did":"mop_percentage","siid":4,"piid":14}, {"did":"mop_left","siid":4,"piid":15},
     {"did":"repeat_state","siid":4,"piid":1}, {"did":"mop_route","siid":4,"piid":6}
 ]
 

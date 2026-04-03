@@ -1,6 +1,7 @@
 # custom_components/viomise/sensor.py
 """Sensor platform for Viomi SE consumables and battery."""
 from __future__ import annotations
+import logging 
 from dataclasses import dataclass
 
 from homeassistant.components.sensor import (
@@ -14,9 +15,12 @@ from homeassistant.const import PERCENTAGE, EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.exceptions import ConfigEntryNotReady
 
 from .const import DOMAIN
 from .coordinator import ViomiSECoordinator
+
+_LOGGER = logging.getLogger(__name__)
 
 # By using a dataclass, we can extend the standard SensorEntityDescription
 # with our own custom fields, in this case, 'value_key'.
@@ -79,14 +83,26 @@ SENSOR_DESCRIPTIONS: tuple[ViomiSESensorEntityDescription, ...] = (
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     """Set up the Viomi SE sensor platform from a config entry."""
-    # Retrieve the coordinator instance stored in __init__.py.
-    coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+    
+    _LOGGER.debug("Setting up sensor platform for entry %s", entry.entry_id)
+    
+    # The coordinator is guaranteed to be ready by __init__.py before calling
+    # async_forward_entry_setups, so we can safely retrieve it here.
+    try:
+        coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+    except KeyError as e:
+        _LOGGER.error("Failed to get coordinator from hass.data: %s", e)
+        _LOGGER.error("Available data: %s", hass.data.get(DOMAIN, {}).get(entry.entry_id, {}))
+        raise ConfigEntryNotReady(f"Coordinator not found for {entry.entry_id}") from e
+    
+    _LOGGER.debug("Coordinator found. Data keys: %s", list(coordinator.data.keys()) if coordinator.data else "None")
     
     # Create a list of sensor entities based on the SENSOR_DESCRIPTIONS tuple.
     entities = [
         ViomiSESensor(coordinator, entry, description)
         for description in SENSOR_DESCRIPTIONS
     ]
+    _LOGGER.debug("Adding %d sensor entities", len(entities))
     async_add_entities(entities)
 
 class ViomiSESensor(CoordinatorEntity[ViomiSECoordinator], SensorEntity):
@@ -104,12 +120,13 @@ class ViomiSESensor(CoordinatorEntity[ViomiSECoordinator], SensorEntity):
         super().__init__(coordinator)
         self.entity_description = description
         
-        # Create a unique ID for the sensor entity.
-        self._attr_unique_id = f"{config_entry.unique_id}_{description.key}"
+        # Use config_entry.entry_id for unique_id if unique_id is not set
+        unique_id = config_entry.unique_id or config_entry.entry_id
+        self._attr_unique_id = f"{unique_id}_{description.key}"
         
         # Link this sensor to the same device as the vacuum entity.
         self._attr_device_info = {
-            "identifiers": {(DOMAIN, config_entry.unique_id)}
+            "identifiers": {(DOMAIN, unique_id)}
         }
 
     @property
