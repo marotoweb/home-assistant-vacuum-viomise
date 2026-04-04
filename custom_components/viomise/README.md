@@ -16,6 +16,22 @@
 
 [hacs_shield]: https://img.shields.io/static/v1.svg?label=HACS&message=Default&style=popout&color=green&labelColor=41bdf5&logo=HomeAssistantCommunityStore&logoColor=white
 
+# Hacky Home assistant support for Viomi SE (V-RVCLM21A)
+
+[hacs_shield]: https://img.shields.io/static/v1.svg?label=HACS&message=Default&style=popout&color=green&labelColor=41bdf5&logo=HomeAssistantCommunityStore&logoColor=white
+
+[hacs]: https://github.com/hacs/integration
+
+[latest_release]: https://github.com/marotoweb/home-assistant-vacuum-viomise/releases/latest
+
+[releases_shield]: https://img.shields.io/github/release/marotoweb/home-assistant-vacuum-viomise.svg?style=popout
+
+[releases]: https://github.com/marotoweb/home-assistant-vacuum-viomise/releases
+
+[downloads_total_shield]: https://img.shields.io/github/downloads/marotoweb/home-assistant-vacuum-viomise/total
+
+[hacs_shield]: https://img.shields.io/static/v1.svg?label=HACS&message=Default&style=popout&color=green&labelColor=41bdf5&logo=HomeAssistantCommunityStore&logoColor=white
+
 # Viomi SE Vacuum Integration for Home Assistant (v2)
 
 This is a custom component for [Home Assistant](https://www.home-assistant.io/) to integrate the Viomi SE Vacuum Cleaner (`viomi.vacuum.v19`) - apparently EU version - with 4.0.9_0012 firmware and tested in 4.0.9_0017.
