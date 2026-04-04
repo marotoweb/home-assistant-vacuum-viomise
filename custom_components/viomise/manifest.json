@@ -1,7 +1,7 @@
 {
   "domain": "viomise",
   "name": "Viomi Robot Vacuum Cleaner SE (V-RVCLM21A)",
-  "codeowners": ["@nqkdev", "@KrzysztofHajdamowicz", "@marotoweb"],
+  "codeowners": ["@marotoweb"],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/marotoweb/home-assistant-vacuum-viomise",
