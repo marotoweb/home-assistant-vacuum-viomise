@@ -23,7 +23,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: 'v2' # Or your default branch name
+          ref: 'main' # Or your default branch name
 
       # Update the version number in manifest.json.
       # This is a crucial step for HACS. It reads the new version from the Git tag
@@ -76,7 +76,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
         with:
-          ref: 'v2'  # Checkout the branch to get the updated manifest from the first job
+          ref: 'main'  # Checkout the branch to get the updated manifest from the first job
 
       # Create a .zip file of the integration's source code.
       - name: ZIP files
