@@ -29,23 +29,21 @@ While optimized for the latest core, it remains compatible with **Home Assistant
 ---
 
 ## <a name="table-of-contents"></a>Table of Contents
-- [Viomi SE Vacuum Integration for Home Assistant (v2)](#viomi-se-vacuum-integration-for-home-assistant-v2)
-  - [Table of Contents](#table-of-contents)
-  - [🎉 What's New in v2? (The Modernization Update)](#-whats-new-in-v2-the-modernization-update)
-  - [⬆️ Upgrading from v1](#️-upgrading-from-v1)
-  - [✨ Features](#-features)
-  - [📋 Prerequisites](#-prerequisites)
-  - [🚀 Installation](#-installation)
-    - [HACS (Recommended)](#hacs-recommended)
-    - [Manual Installation](#manual-installation)
-  - [⚙️ Configuration](#️-configuration)
-  - [🔧 Options](#-options)
-  - [📦 Entities Provided](#-entities-provided)
-  - [🛠️ Custom Services](#️-custom-services)
-  - [❓ Troubleshooting](#-troubleshooting)
-  - [Acknowledgements](#acknowledgements)
-  - [🤝 Contributions](#-contributions)
-  - [📄 License](#-license)
+*   [What's New in v2?](#whats-new)
+*   [Upgrading from v1](#upgrading)
+*   [Features](#features)
+*   [Prerequisites](#prerequisites)
+*   [Installation](#installation)
+    *   [HACS (Recommended)](#hacs-installation)
+    *   [Manual Installation](#manual-installation)
+*   [Configuration](#configuration)
+*   [Options](#options)
+*   [Entities Provided](#entities)
+*   [Custom Services](#services)
+*   [Troubleshooting](#troubleshooting)
+*   [Acknowledgements](#acknowledgements)
+*   [Contributions](#contributions)
+*   [License](#license)
 
 ---
 
