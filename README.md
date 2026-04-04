@@ -18,9 +18,11 @@
 
 # Viomi SE Vacuum Integration for Home Assistant (v2)
 
-This is a custom component for [Home Assistant](https://www.home-assistant.io/ ) to integrate the Viomi SE Vacuum Cleaner (`viomi.vacuum.v19`) - apparently EU version - with 4.0.9_0012 firmware and tested in 4.0.9_0017
+This is a custom component for [Home Assistant](https://www.home-assistant.io/) to integrate the Viomi SE Vacuum Cleaner (`viomi.vacuum.v19`) - apparently EU version - with 4.0.9_0012 firmware and tested in 4.0.9_0017.
 
-This version (v2025.10.19) has been completely refactored to use modern Home Assistant practices, including UI-based configuration (`Config Flow`), device-specific sensors, and configurable options.
+Building upon the major refactor initiated in **v2025.10.19**, the current version (**v2026.4.4**) has been fully updated and **verified on Home Assistant 2026.2.3**. 
+
+While optimized for the latest core, it remains compatible with **Home Assistant 2024.12.0+** thanks to the use of modern practices like UI-based configuration (`Config Flow`), `DataUpdateCoordinator`, dedicated sensors for consumables, and configurable options.
 
 <img src="https://github.com/home-assistant/brands/raw/master/custom_integrations/viomise/logo.png" width=48%> 
 
@@ -47,7 +49,9 @@ This version (v2025.10.19) has been completely refactored to use modern Home Ass
 
 ## <a name="whats-new"></a>🎉 What's New in v2? (The Modernization Update)
 
-Version v2 (v2025.10.19) is a massive update that completely refactors the integration. If you are a new user, you can skip to the [Installation](#installation) section. If you are coming from form version v1 (v2025.02.09beta) or before, please read the [Upgrading](#upgrading) instructions below.
+The current version (**v2026.4.4**), building on the massive refactor initiated in **v2025.10.19**, completely modernizes this integration. 
+
+If you are a new user, you can skip to the [Installation](#installation) section. If you are upgrading from version **v1** (v2025.02.09beta or earlier), please read the [Upgrading](#upgrading) instructions below carefully.
 
 *   **UI-Based Configuration**: No more YAML! The integration is now set up entirely through the Home Assistant interface.
 *   **Dedicated Sensors for Consumables**: Individual sensors for the remaining life of the **main brush, side brush, filter, and mop**.
@@ -110,8 +114,18 @@ This integration is part of the default HACS repository!
 
 1.  Download the latest release from the [Releases](https://github.com/marotoweb/home-assistant-vacuum-viomise/releases ) page.
 2.  Unzip the downloaded file.
-3.  Copy the entire `viomise` folder (which contains all the necessary files like `__init__.py`, `vacuum.py`, `sensor.py`, etc.) into your Home Assistant's `custom_components` directory. The final path should look like `<config_directory>/custom_components/viomise`.
-4.  Restart Home Assistant.
+3. Copy the entire `viomise` folder into your Home Assistant's `custom_components` directory. 
+
+   **Important:** Ensure the folder contains all these critical files for **v2** to work:
+   * `__init__.py` & `const.py` (Core logic and constants)
+   * `coordinator.py` (Data handling - **Essential for v2**)
+   * `config_flow.py` (UI Configuration setup)
+   * `vacuum.py` & `sensor.py` (Entity platforms)
+   * `manifest.json` & `services.yaml`
+   * `translations/` folder (Required for UI text and translations)
+
+4. The final path should look like: `<config_directory>/custom_components/viomise/`
+5. **Restart Home Assistant.**
 
 ---
 
@@ -155,7 +169,7 @@ The integration creates a vacuum entity and several sensor entities, all linked 
 *   `sensor.viomi_se_filter_life`
 *   `sensor.viomi_se_mop_life`
 
-*Note: The exact entity ID may vary slightly based on the name you provide during setup.*
+*Note: The exact entity ID may vary slightly based on the name you provide during setup. Naming the vacuum 'Robot' will result in the entity ID `sensor.robot_battery`*
 
 ---
 
