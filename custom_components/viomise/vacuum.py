@@ -140,7 +140,7 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
         self._config_entry = config_entry
         self._vacuum: Device = coordinator.vacuum
         self._attr_name = config_entry.title
-        self._attr_unique_id = config_entry.unique_id
+        self._attr_unique_id = f"{config_entry.unique_id}_viomise"
         self._last_command_time: float = 0
         self._last_clean_point: list[float] | None = None
         self._attr_device_info = {"identifiers": {(DOMAIN, self.unique_id)}}
