@@ -311,21 +311,17 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
 
     async def async_clean_zone(self, zone: list, repeats: int = 1):
         """Clean selected area(s) for the number of repeats indicated."""
-        _LOGGER.debug("Viomise: Starting async_clean_zone with zones: %s and repeats: %s", zone, repeats)
 
         result = []
         i = 0
-        for z in zone:
+        for _ in zone:
             x1, y2, x2, y1 = z
-            _LOGGER.debug("Viomise: Processing zone %s: x1=%s, y2=%s, x2=%s, y1=%s", i, x1, y2, x2, y1)
             for r in range(repeats):
                 res = '_'.join(str(x) for x in [i, 0, x1, y1, x1, y2, x2, y2, x2, y1])
                 result.append(res)
-                _LOGGER.debug("Viomise Debug: Zone %s, Repeat %s -> Payload: %s", i, r + 1, res)
                 i += 1
-        
+             
         result = [i] + result
-        _LOGGER.debug("Viomise: Final payload for 'set_zone': %s", result)
         
         if await self._try_command("clean_zone (uploadmap)", "Unable to set uploadmap for zone cleaning", self._vacuum.raw_command, 'set_uploadmap', [1], delay=True):
             if await self._try_command("clean_zone (set_zone)", "Unable to send zone cleaning command", self._vacuum.raw_command, 'set_zone', result, skip_cooldown=True):
