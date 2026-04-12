@@ -314,9 +314,9 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
 
         result = []
         i = 0
-        for _ in zone:
+        for z in zone:
             x1, y2, x2, y1 = z
-            for r in range(repeats):
+            for _ in range(repeats):
                 res = '_'.join(str(x) for x in [i, 0, x1, y1, x1, y2, x2, y2, x2, y1])
                 result.append(res)
                 i += 1
