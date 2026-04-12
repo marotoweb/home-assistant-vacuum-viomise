@@ -48,12 +48,35 @@ class ViomiSECoordinator(DataUpdateCoordinator[dict[str, any]]):
     def __init__(self, hass: HomeAssistant, vacuum: ViomiVacuum, scan_interval: int):
         """Initialize the data update coordinator."""
         self.vacuum = vacuum
+        # Dictionary to store hardware info (model, fw_ver, mac, etc.)
+        self.device_info_data = {}
+        
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
             update_interval=timedelta(seconds=scan_interval),
         )
+
+    async def async_fetch_device_info(self):
+        """
+        Fetch static device information (model, firmware, MAC) once.
+        This is called during integration setup to populate device_info.
+        """
+        try:
+            _LOGGER.debug("Viomise: Fetching static device information via miIO.info")
+            info = await self.hass.async_add_executor_job(
+                self.vacuum.raw_command, 'miIO.info', []
+            )
+            if info:
+                self.device_info_data = info
+                _LOGGER.info(
+                    "Viomise: Connected to %s (FW: %s)", 
+                    info.get("model"), 
+                    info.get("fw_ver")
+                )
+        except DeviceException as e:
+            _LOGGER.warning("Viomise: Failed to fetch static device info: %s", e)
 
     async def _async_update_data(self) -> dict[str, any]:
         """
@@ -84,4 +107,3 @@ class ViomiSECoordinator(DataUpdateCoordinator[dict[str, any]]):
         except DeviceException as e:
             # If communication fails, raise UpdateFailed to notify entities.
             raise UpdateFailed(f"Error communicating with Viomi SE device: {e}") from e
-

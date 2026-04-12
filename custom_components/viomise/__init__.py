@@ -59,7 +59,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Create the DataUpdateCoordinator, which will manage fetching data.
     coordinator = ViomiSECoordinator(hass, vacuum, scan_interval=scan_interval)
 
-    # Fetch initial data from the device before setting up the entities.
+    # Fetch static device information (Model, FW, MAC) via miIO.info before everything else.
+    # This allows entities to have correct device_info on creation.
+    await coordinator.async_fetch_device_info()
+
+    # Fetch initial state data (Battery, Mode, etc.) from the device before setting up the entities.
     await coordinator.async_config_entry_first_refresh()
 
     # Store the coordinator, vacuum instance, and options in hass.data for the platforms to use.
@@ -91,4 +95,3 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Handle reloading the config entry when options are updated."""
     await async_unload_entry(hass, entry)
     await async_setup_entry(hass, entry)
-

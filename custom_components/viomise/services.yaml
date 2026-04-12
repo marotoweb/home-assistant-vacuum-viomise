@@ -1,6 +1,8 @@
 # Describes the custom services for the Viomi SE integration.
 
-vacuum_clean_segment:
+# --- NEW NAMESPACE SERVICES ---
+
+viomise_clean_segment:
   name: Clean Segment(s)
   description: "Cleans one or more specific rooms (segments) identified by the vacuum's map."
   fields:
@@ -12,7 +14,7 @@ vacuum_clean_segment:
       selector:
         object: {}
 
-vacuum_clean_zone:
+viomise_clean_zone:
   name: Clean Zone
   description: "Cleans a specified rectangular zone one or more times."
   fields:
@@ -34,7 +36,7 @@ vacuum_clean_zone:
           max: 3
           mode: box
 
-vacuum_goto:
+viomise_goto:
   name: Go To Point
   description: "Commands the vacuum to go to a specific coordinate on the map."
   fields:
@@ -61,7 +63,7 @@ vacuum_goto:
           mode: box
           step: 100
 
-xiaomi_clean_point:
+viomise_clean_point:
   name: Clean Around Point
   description: "Commands the vacuum to perform a spot cleaning around a specific coordinate."
   fields:
@@ -73,3 +75,53 @@ xiaomi_clean_point:
       selector:
         object: {}
 
+# --- LEGACY COMPATIBILITY SERVICES ---
+# These are kept so old automations and map cards still show documentation.
+
+vacuum_clean_segment:
+  name: "[Legacy] Clean Segment(s)"
+  description: "Legacy service name for cleaning rooms. Please use viomise_clean_segment instead."
+  fields:
+    segments:
+      name: Segments
+      required: true
+      selector:
+        object: {}
+
+xiaomi_clean_zone:
+  name: "[Legacy] Clean Zone"
+  description: "Legacy service name for zone cleaning. Please use viomise_clean_zone instead."
+  fields:
+    zone:
+      name: Zone
+      required: true
+      selector:
+        object: {}
+    repeats:
+      name: Repeats
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 3
+
+vacuum_goto:
+  name: "[Legacy] Go To Point"
+  description: "Legacy service name for goto. Please use viomise_goto instead."
+  fields:
+    x_coord:
+      name: X-Coordinate
+      required: true
+    y_coord:
+      name: Y-Coordinate
+      required: true
+
+xiaomi_clean_point:
+  name: "[Legacy] Clean Around Point"
+  description: "Legacy service name for spot cleaning. Please use viomise_clean_point instead."
+  fields:
+    point:
+      name: Point
+      required: true
+      selector:
+        object: {}

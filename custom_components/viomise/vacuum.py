@@ -2,7 +2,6 @@
 """Vacuum platform for the Viomi SE integration."""
 from __future__ import annotations
 
-
 import asyncio
 import logging
 import time
@@ -63,10 +62,17 @@ STATE_CODE_TO_ACTIVITY = {
 }
 
 # Service definitions for advanced cleaning modes.
-SERVICE_CLEAN_ZONE = "xiaomi_clean_zone"
-SERVICE_GOTO = "vacuum_goto"
-SERVICE_CLEAN_SEGMENT = "vacuum_clean_segment"
-SERVICE_CLEAN_POINT = "xiaomi_clean_point"
+# We use the viomise_ prefix to avoid collisions, but keep legacy names for Lovelace compatibility.
+SERVICE_CLEAN_ZONE = "viomise_clean_zone"
+SERVICE_GOTO = "viomise_goto"
+SERVICE_CLEAN_SEGMENT = "viomise_clean_segment"
+SERVICE_CLEAN_POINT = "viomise_clean_point"
+
+# Legacy names for backward compatibility with lovelace-xiaomi-vacuum-map-card
+LEGACY_CLEAN_ZONE = "xiaomi_clean_zone"
+LEGACY_GOTO = "vacuum_goto"
+LEGACY_CLEAN_SEGMENT = "vacuum_clean_segment"
+LEGACY_CLEAN_POINT = "xiaomi_clean_point"
 
 ATTR_ZONE_ARRAY = "zone"
 ATTR_ZONE_REPEATER = "repeats"
@@ -82,11 +88,16 @@ SERVICE_SCHEMA_CLEAN_SEGMENT = vol.Schema({vol.Required(ATTR_SEGMENTS): vol.Any(
 SERVICE_SCHEMA_CLEAN_POINT = vol.Schema({vol.Required(ATTR_POINT): vol.All(vol.ExactSequence([vol.Coerce(float), vol.Coerce(float)]))}, extra=vol.ALLOW_EXTRA)
 
 # Mapping from service names to the corresponding method.
+# Includes both new and legacy names pointing to the same functions.
 SERVICE_TO_METHOD = {
     SERVICE_CLEAN_ZONE: {"method": "async_clean_zone", "schema": SERVICE_SCHEMA_CLEAN_ZONE},
+    LEGACY_CLEAN_ZONE: {"method": "async_clean_zone", "schema": SERVICE_SCHEMA_CLEAN_ZONE},
     SERVICE_GOTO: {"method": "async_goto", "schema": SERVICE_SCHEMA_GOTO},
+    LEGACY_GOTO: {"method": "async_goto", "schema": SERVICE_SCHEMA_GOTO},
     SERVICE_CLEAN_SEGMENT: {"method": "async_clean_segment", "schema": SERVICE_SCHEMA_CLEAN_SEGMENT},
+    LEGACY_CLEAN_SEGMENT: {"method": "async_clean_segment", "schema": SERVICE_SCHEMA_CLEAN_SEGMENT},
     SERVICE_CLEAN_POINT: {"method": "async_clean_point", "schema": SERVICE_SCHEMA_CLEAN_POINT},
+    LEGACY_CLEAN_POINT: {"method": "async_clean_point", "schema": SERVICE_SCHEMA_CLEAN_POINT},
 }
 
 
@@ -140,10 +151,22 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
         self._config_entry = config_entry
         self._vacuum: Device = coordinator.vacuum
         self._attr_name = config_entry.title
-        self._attr_unique_id = config_entry.unique_id
+        self._attr_unique_id = f"{config_entry.unique_id}_viomise"
         self._last_command_time: float = 0
         self._last_clean_point: list[float] | None = None
-        self._attr_device_info = {"identifiers": {(DOMAIN, self.unique_id)}}
+        
+        # Use dynamic device information from miIO.info
+        info = coordinator.device_info_data
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, config_entry.unique_id)},
+            "name": config_entry.title,
+            "manufacturer": "Viomi",
+            "model": info.get("model", "Viomi SE (V19)"),
+            "sw_version": info.get("fw_ver"),
+            "hw_version": info.get("hw_ver"),
+            "connections": {("mac", info.get("mac"))},
+        }
+        
         # Store the entity in hass.data for the service handler to find it.
         hass = coordinator.hass
         if DOMAIN not in hass.data: hass.data[DOMAIN] = {}
@@ -288,19 +311,25 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
 
     async def async_clean_zone(self, zone: list, repeats: int = 1):
         """Clean selected area(s) for the number of repeats indicated."""
+        _LOGGER.debug("Viomise: Starting async_clean_zone with zones: %s and repeats: %s", zone, repeats)
+
         result = []
         i = 0
         for z in zone:
             x1, y2, x2, y1 = z
+            _LOGGER.debug("Viomise: Processing zone %s: x1=%s, y2=%s, x2=%s, y1=%s", i, x1, y2, x2, y1)
             for _ in range(repeats):
                 res = '_'.join(str(x) for x in [i, 0, x1, y1, x1, y2, x2, y2, x2, y1])
                 result.append(res)
+                _LOGGER.debug("Viomise Debug: Zone %s, Repeat %s -> Payload: %s", i, r + 1, res)
                 i += 1
+        
         result = [i] + result
+        _LOGGER.debug("Viomise: Final payload for 'set_zone': %s", result)
+        
         if await self._try_command("clean_zone (uploadmap)", "Unable to set uploadmap for zone cleaning", self._vacuum.raw_command, 'set_uploadmap', [1], delay=True):
             if await self._try_command("clean_zone (set_zone)", "Unable to send zone cleaning command", self._vacuum.raw_command, 'set_zone', result, skip_cooldown=True):
                 await self._try_command("clean_zone (set_mode)", "Unable to start zone cleaning mode", self._vacuum.raw_command, 'set_mode', [3, 1], skip_cooldown=True)
-
 
     async def async_goto(self, x_coord: float, y_coord: float):
         """Go to a specific coordinate."""
