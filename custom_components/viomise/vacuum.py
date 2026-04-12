@@ -63,7 +63,7 @@ STATE_CODE_TO_ACTIVITY = {
 }
 
 # Service definitions for advanced cleaning modes.
-SERVICE_CLEAN_ZONE = "vacuum_clean_zone"
+SERVICE_CLEAN_ZONE = "xiaomi_clean_zone"
 SERVICE_GOTO = "vacuum_goto"
 SERVICE_CLEAN_SEGMENT = "vacuum_clean_segment"
 SERVICE_CLEAN_POINT = "xiaomi_clean_point"
@@ -140,7 +140,7 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
         self._config_entry = config_entry
         self._vacuum: Device = coordinator.vacuum
         self._attr_name = config_entry.title
-        self._attr_unique_id = f"{config_entry.unique_id}_viomise"
+        self._attr_unique_id = config_entry.unique_id
         self._last_command_time: float = 0
         self._last_clean_point: list[float] | None = None
         self._attr_device_info = {"identifiers": {(DOMAIN, self.unique_id)}}
@@ -185,17 +185,20 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
             return None
         return self.coordinator.data
 
-    async def _try_command(self, command_name: str, mask_error: str, func: Callable, *args: Any, **kwargs: Any) -> bool:
+    async def _try_command(self, command_name: str, mask_error: str, func: Callable, *args: Any, delay: bool = False, skip_cooldown: bool = False, **kwargs: Any) -> bool:
         """Try to call a vacuum command, handling cooldown and exceptions."""
         cooldown = self._config_entry.options.get(CONF_COMMAND_COOLDOWN, DEFAULT_COMMAND_COOLDOWN)
         current_time = time.time()
-        if (current_time - self._last_command_time) < cooldown:
+        if not skip_cooldown and (current_time - self._last_command_time) < cooldown:
             _LOGGER.info("Command '%s' ignored: still cooling down from previous command (cooldown: %.1f s)", command_name, cooldown)
             return False
         self._last_command_time = current_time
         try:
             await self.hass.async_add_executor_job(partial(func, *args, **kwargs))
-            await self.coordinator.async_request_refresh()
+            if not delay:
+                await self.coordinator.async_request_refresh()
+            else:
+                await asyncio.sleep(1)
             return True
         except DeviceException as exc:
             _LOGGER.error(mask_error, exc)
@@ -288,30 +291,32 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
         result = []
         i = 0
         for z in zone:
-            x1, y1, x2, y2 = z[0], z[1], z[2], z[3]
-            res = '_'.join(str(x) for x in [i, 0, x1, y1, x1, y2, x2, y2, x2, y1])
+            x1, y2, x2, y1 = z
             for _ in range(repeats):
+                res = '_'.join(str(x) for x in [i, 0, x1, y1, x1, y2, x2, y2, x2, y1])
                 result.append(res)
                 i += 1
         result = [i] + result
-        if await self._try_command("clean_zone (set_zone)", "Unable to send zone cleaning command", self._vacuum.raw_command, 'set_zone', result):
-            await self._try_command("clean_zone (set_mode)", "Unable to start zone cleaning mode", self._vacuum.raw_command, 'set_mode', [3, 1])
+        if await self._try_command("clean_zone (uploadmap)", "Unable to set uploadmap for zone cleaning", self._vacuum.raw_command, 'set_uploadmap', [1], delay=True):
+            if await self._try_command("clean_zone (set_zone)", "Unable to send zone cleaning command", self._vacuum.raw_command, 'set_zone', result, skip_cooldown=True):
+                await self._try_command("clean_zone (set_mode)", "Unable to start zone cleaning mode", self._vacuum.raw_command, 'set_mode', [3, 1], skip_cooldown=True)
+
 
     async def async_goto(self, x_coord: float, y_coord: float):
         """Go to a specific coordinate."""
         self._last_clean_point = [x_coord, y_coord]
-        if await self._try_command("goto (uploadmap)", "Unable to set uploadmap for goto", self._vacuum.raw_command, 'set_uploadmap', [0]):
-            await self._try_command("goto (set_pointclean)", "Unable to go to point", self._vacuum.raw_command, 'set_pointclean', [1, x_coord, y_coord])
+        if await self._try_command("goto (uploadmap)", "Unable to set uploadmap for goto", self._vacuum.raw_command, 'set_uploadmap', [0], delay=True):
+            await self._try_command("goto (set_pointclean)", "Unable to go to point", self._vacuum.raw_command, 'set_pointclean', [1, x_coord, y_coord], skip_cooldown=True)
 
     async def async_clean_segment(self, segments: list[int] | int):
         """Clean selected segment(s) (rooms)."""
         if isinstance(segments, int):
             segments = [segments]
-        if await self._try_command("clean_segment (uploadmap)", "Unable to set uploadmap for segment cleaning", self._vacuum.raw_command, 'set_uploadmap', [1]):
-            await self._try_command("clean_segment (set_mode_withroom)", "Unable to clean segments", self._vacuum.raw_command, 'set_mode_withroom', [0, 1, len(segments)] + segments)
+        if await self._try_command("clean_segment (uploadmap)", "Unable to set uploadmap for segment cleaning", self._vacuum.raw_command, 'set_uploadmap', [1], delay=True):
+            await self._try_command("clean_segment (set_mode_withroom)", "Unable to clean segments", self._vacuum.raw_command, 'set_mode_withroom', [0, 1, len(segments)] + segments, skip_cooldown=True)
 
     async def async_clean_point(self, point: list[float]):
-        """Clean around a specific point."""
+        """Clean 2m x 2m area around a specific point."""
         self._last_clean_point = point
-        await self._try_command("clean_point (set_pointclean)", "Unable to clean point", self._vacuum.raw_command, 'set_pointclean', [1, point[0], point[1]])
-
+        if await self._try_command("clean_point (uploadmap)", "Unable to set uploadmap for point cleaning", self._vacuum.raw_command, 'set_uploadmap', [0], delay=True):
+            await self._try_command("clean_point (set_pointclean)", "Unable to clean point", self._vacuum.raw_command, 'set_pointclean', [1, point[0], point[1]], skip_cooldown=True)
