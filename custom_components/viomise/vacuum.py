@@ -318,7 +318,7 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
         for z in zone:
             x1, y2, x2, y1 = z
             _LOGGER.debug("Viomise: Processing zone %s: x1=%s, y2=%s, x2=%s, y1=%s", i, x1, y2, x2, y1)
-            for _ in range(repeats):
+            for r in range(repeats):
                 res = '_'.join(str(x) for x in [i, 0, x1, y1, x1, y2, x2, y2, x2, y1])
                 result.append(res)
                 _LOGGER.debug("Viomise Debug: Zone %s, Repeat %s -> Payload: %s", i, r + 1, res)
