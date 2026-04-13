@@ -1,0 +1,53 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "Konfiguracja odkurzacza Viomi",
+                "description": "Wprowadź dane połączenia dla Twojego odkurzacza Viomi.",
+                "data": {
+                    "host": "Adres IP",
+                    "token": "Token",
+                    "name": "Nazwa urządzenia"
+                }
+            }
+        },
+        "error": {
+            "cannot_connect": "Nie udało się połączyć z urządzeniem. Sprawdź adres IP i token.",
+            "unknown": "Wystąpił nieznany błąd."
+        },
+        "abort": {
+            "already_configured": "Urządzenie jest już skonfigurowane."
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "Opcje Viomi SE",
+                "description": "Dostosuj opcje czasowe dla integracji.",
+                "data": {
+                    "command_cooldown": "Cooldown komendy (sekundy)",
+                    "scan_interval": "Interwał aktualizacji (sekundy)"
+                }
+            }
+        }
+    },
+    "entity": {
+        "sensor": {
+            "battery": {
+                "name": "Bateria"
+            },
+            "main_brush_left": {
+                "name": "Żywotność głównej szczotki"
+            },
+            "side_brush_left": {
+                "name": "Żywotność bocznej szczotki"
+            },
+            "filter_left": {
+                "name": "Żywotność filtra"
+            },
+            "mop_left": {
+                "name": "Żywotność mopa"
+            }
+        }
+    }
+}
