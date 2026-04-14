@@ -75,6 +75,35 @@ viomise_clean_point:
       selector:
         object: {}
 
+viomise_set_map:
+  name: Set Active Map
+  description: "Switches the active map. Provide one of the following: Name, Index, or ID."
+  fields:
+    map_name:
+      name: Map Name
+      description: "The name of the map as defined in the Xiaomi Home app (e.g., 'Ground Floor')."
+      example: "Ground Floor"
+      selector:
+        text: {}
+    map_index:
+      name: Map Index
+      description: "The numerical index in the map list (0 for the first map, 1 for the second, etc.)."
+      example: 1
+      selector:
+        number:
+          min: 0
+          max: 10
+          mode: box
+    map_id:
+      name: Map ID
+      description: "The internal unique ID of the map (10-digit number)."
+      example: 1775989514
+      selector:
+        number:
+          min: 0
+          max: 4294967295
+          mode: box
+
 # --- LEGACY COMPATIBILITY SERVICES ---
 # These are kept so old automations and map cards still show documentation.
 
