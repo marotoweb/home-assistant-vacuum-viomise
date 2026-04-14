@@ -67,6 +67,7 @@ SERVICE_CLEAN_ZONE = "viomise_clean_zone"
 SERVICE_GOTO = "viomise_goto"
 SERVICE_CLEAN_SEGMENT = "viomise_clean_segment"
 SERVICE_CLEAN_POINT = "viomise_clean_point"
+SERVICE_SET_MAP = "viomise_set_map" # Map Switching Service
 
 # Legacy names for backward compatibility with lovelace-xiaomi-vacuum-map-card
 LEGACY_CLEAN_ZONE = "xiaomi_clean_zone"
@@ -80,12 +81,22 @@ ATTR_X_COORD = "x_coord"
 ATTR_Y_COORD = "y_coord"
 ATTR_SEGMENTS = "segments"
 ATTR_POINT = "point"
+ATTR_MAP_ID = "map_id"
+ATTR_MAP_NAME = "map_name"
+ATTR_MAP_INDEX = "map_index"
 
 # Schemas for the service calls.
 SERVICE_SCHEMA_CLEAN_ZONE = vol.Schema({vol.Required(ATTR_ZONE_ARRAY): vol.All(list, [vol.ExactSequence([vol.Coerce(float), vol.Coerce(float), vol.Coerce(float), vol.Coerce(float)])]), vol.Required(ATTR_ZONE_REPEATER): vol.All(vol.Coerce(int), vol.Clamp(min=1, max=3))}, extra=vol.ALLOW_EXTRA)
 SERVICE_SCHEMA_GOTO = vol.Schema({vol.Required(ATTR_X_COORD): vol.Coerce(float), vol.Required(ATTR_Y_COORD): vol.Coerce(float)}, extra=vol.ALLOW_EXTRA)
 SERVICE_SCHEMA_CLEAN_SEGMENT = vol.Schema({vol.Required(ATTR_SEGMENTS): vol.Any(vol.Coerce(int), [vol.Coerce(int)])}, extra=vol.ALLOW_EXTRA)
 SERVICE_SCHEMA_CLEAN_POINT = vol.Schema({vol.Required(ATTR_POINT): vol.All(vol.ExactSequence([vol.Coerce(float), vol.Coerce(float)]))}, extra=vol.ALLOW_EXTRA)
+
+# Flexible schema: accepts any of the three, but ensures they are the correct type
+SERVICE_SCHEMA_SET_MAP = vol.Schema({
+    vol.Optional(ATTR_MAP_ID): vol.Coerce(int),
+    vol.Optional(ATTR_MAP_NAME): cv.string,
+    vol.Optional(ATTR_MAP_INDEX): vol.Coerce(int),
+}, extra=vol.ALLOW_EXTRA)
 
 # Mapping from service names to the corresponding method.
 # Includes both new and legacy names pointing to the same functions.
@@ -98,7 +109,7 @@ SERVICE_TO_METHOD = {
     LEGACY_CLEAN_SEGMENT: {"method": "async_clean_segment", "schema": SERVICE_SCHEMA_CLEAN_SEGMENT},
     SERVICE_CLEAN_POINT: {"method": "async_clean_point", "schema": SERVICE_SCHEMA_CLEAN_POINT},
     LEGACY_CLEAN_POINT: {"method": "async_clean_point", "schema": SERVICE_SCHEMA_CLEAN_POINT},
-}
+    SERVICE_SET_MAP: {"method": "async_set_map", "schema": SERVICE_SCHEMA_SET_MAP},}
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
@@ -345,3 +356,64 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
         self._last_clean_point = point
         if await self._try_command("clean_point (uploadmap)", "Unable to set uploadmap for point cleaning", self._vacuum.raw_command, 'set_uploadmap', [0], delay=True):
             await self._try_command("clean_point (set_pointclean)", "Unable to clean point", self._vacuum.raw_command, 'set_pointclean', [1, point[0], point[1]], skip_cooldown=True)
+    
+    async def async_set_map(
+            self, 
+            map_id: int | None = None, 
+            map_name: str | None = None, 
+            map_index: int | None = None
+        ) -> None:
+            """
+            Switch the active map using ID, Name, or Index.
+            The method resolves Name/Index to a Map ID by fetching the current map list.
+            """
+            target_id = map_id
+
+            # If ID is not provided, we must resolve it from Name or Index
+            if target_id is None:
+                _LOGGER.debug("Resolving map ID from Name ('%s') or Index (%s)", map_name, map_index)
+                try:
+                    # Fetch the current map list from the device
+                    response = await self.hass.async_add_executor_job(
+                        self._vacuum.raw_command, "get_map"
+                    )
+                    
+                    # The Viomi SE returns a nested JSON string in the 'value' field
+                    import json
+                    map_data_str = response['out'][0]['value']
+                    maps = json.loads(map_data_str)
+                    # Structure: [{"name": "Map1", "id": 123, "cur": true}, ...]
+
+                    if map_name:
+                        # Case-insensitive name matching
+                        target_id = next(
+                            (m['id'] for m in maps if m['name'].lower() == map_name.lower()), 
+                            None
+                        )
+                    elif map_index is not None:
+                        # Selection by list position
+                        if 0 <= map_index < len(maps):
+                            target_id = maps[map_index]['id']
+
+                except (KeyError, IndexError, json.JSONDecodeError, TypeError) as err:
+                    _LOGGER.error("Failed to parse map list from vacuum: %s", err)
+                    return
+                except Exception as err:
+                    _LOGGER.error("Unexpected error resolving map: %s", err)
+                    return
+
+            # Execute the switch if an ID was found
+            if target_id is not None:
+                _LOGGER.info("Switching Viomi SE to map ID: %s", target_id)
+                await self._try_command(
+                    "set_map", 
+                    "Failed to switch map: %s", 
+                    self._vacuum.raw_command, 
+                    'set_map', 
+                    [target_id]
+                )
+            else:
+                _LOGGER.error(
+                    "Could not resolve map. Criteria: Name=%s, Index=%s, ID=%s", 
+                    map_name, map_index, map_id
+                )
