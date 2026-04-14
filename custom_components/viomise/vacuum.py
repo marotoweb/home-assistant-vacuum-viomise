@@ -365,46 +365,52 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
         ) -> None:
             """
             Switch the active map using ID, Name, or Index.
-            The method resolves Name/Index to a Map ID by fetching the current map list.
+            
+            This method resolves the target Map ID by fetching the current map list 
+            directly from the device if only a Name or Index is provided.
             """
+            import json # Import locally to ensure availability in exception blocks
             target_id = map_id
 
-            # If ID is not provided, we must resolve it from Name or Index
+            # If ID is not directly provided, we must resolve it from Name or Index
             if target_id is None:
-                _LOGGER.debug("Resolving map ID from Name ('%s') or Index (%s)", map_name, map_index)
+                _LOGGER.debug(
+                    "Resolving map ID for Viomi SE. Criteria: Name='%s', Index=%s", 
+                    map_name, map_index
+                )
                 try:
                     # Fetch the current map list from the device
                     response = await self.hass.async_add_executor_job(
-                        self._vacuum.raw_command, "get_map"
+                        self._vacuum.raw_command, "get_map", []
                     )
                     
-                    # The Viomi SE returns a nested JSON string in the 'value' field
-                    import json
-                    map_data_str = response['out'][0]['value']
+                    # Extract and parse the nested JSON string from the response
+                    # Format: response['out'][0]['value'] -> '[{"name": "...", "id": ...}]'
+                    map_data_str = response.get('out', [{}])[0].get('value', '[]')
                     maps = json.loads(map_data_str)
-                    # Structure: [{"name": "Map1", "id": 123, "cur": true}, ...]
 
                     if map_name:
-                        # Case-insensitive name matching
+                        # Case-insensitive search for the map name
                         target_id = next(
                             (m['id'] for m in maps if m['name'].lower() == map_name.lower()), 
                             None
                         )
                     elif map_index is not None:
-                        # Selection by list position
+                        # Selection by position in the list (0, 1, 2...)
                         if 0 <= map_index < len(maps):
                             target_id = maps[map_index]['id']
 
                 except (KeyError, IndexError, json.JSONDecodeError, TypeError) as err:
-                    _LOGGER.error("Failed to parse map list from vacuum: %s", err)
+                    _LOGGER.error("Failed to parse map list from Viomi SE: %s", err)
                     return
                 except Exception as err:
-                    _LOGGER.error("Unexpected error resolving map: %s", err)
+                    _LOGGER.error("Unexpected error during map resolution: %s", err)
                     return
 
-            # Execute the switch if an ID was found
+            # Execute the switch command if an ID was successfully resolved
             if target_id is not None:
-                _LOGGER.info("Switching Viomi SE to map ID: %s", target_id)
+                _LOGGER.info("Switching Viomi SE to Map ID: %s", target_id)
+                # The 'set_map' command expects the ID inside a list [ID]
                 await self._try_command(
                     "set_map", 
                     "Failed to switch map: %s", 
