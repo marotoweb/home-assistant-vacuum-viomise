@@ -64,7 +64,7 @@ class ViomiVacuumConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 device_info = await validate_input(self.hass, user_input[CONF_HOST], user_input[CONF_TOKEN])
 
                 # Step 2: Set the unique ID for the device to prevent duplicates.
-                await self.async_set_unique_id(device_info["mac"])
+                await self.async_set_unique_id(f"{device_info['mac']}_viomise")
                 self._abort_if_unique_id_configured()
 
                 # Step 3: If validation is successful, create the config entry.
