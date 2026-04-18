@@ -62,7 +62,7 @@ STATE_CODE_TO_ACTIVITY = {
 }
 
 # Service definitions for advanced cleaning modes.
-SERVICE_CLEAN_ZONE = "vacuum_clean_zone"
+SERVICE_CLEAN_ZONE = "xiaomi_clean_zone"
 SERVICE_GOTO = "vacuum_goto"
 SERVICE_CLEAN_SEGMENT = "vacuum_clean_segment"
 SERVICE_CLEAN_POINT = "vacuum_clean_point"
