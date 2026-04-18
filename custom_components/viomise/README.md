@@ -44,7 +44,6 @@ While optimized for the latest core, it remains compatible with **Home Assistant
 ---
 
 ## <a name="table-of-contents"></a>Table of Contents
-- [Viomi SE (V-RVCLM21A) integration for Home Assistant](#viomi-se-v-rvclm21a-integration-for-home-assistant)
   - [Table of Contents](#table-of-contents)
   - [🎉 What's New in v2? (The Modernization Update)](#-whats-new-in-v2-the-modernization-update)
   - [⬆️ Upgrading from v1](#️-upgrading-from-v1)
