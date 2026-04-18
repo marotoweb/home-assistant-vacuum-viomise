@@ -21,7 +21,7 @@ ALL_PROPS = [
     "s_time", "s_area", "suction_grade", "water_grade", "remember_map", "has_map",
     "is_mop", "has_newmap", "main_brush_percentage", "main_brush_left",
     "side_brush_percentage", "side_brush_left", "filter_percentage", "filter_left",
-    "mop_percentage", "mop_left", "repeat_state", "mop_route"
+    "mop_percentage", "mop_left", "repeat_state", "mop_route", "current_map_id"
 ]
 
 # This mapping is crucial for this specific vacuum model (viomi.vacuum.v19).
@@ -38,7 +38,8 @@ MAPPING = [
     {"did":"side_brush_percentage","siid":4,"piid":8}, {"did":"side_brush_left","siid":4,"piid":9},
     {"did":"filter_percentage","siid":4,"piid":12}, {"did":"filter_left","siid":4,"piid":13},
     {"did":"mop_percentage","siid":4,"piid":14}, {"did":"mop_left","siid":4,"piid":15},
-    {"did":"repeat_state","siid":4,"piid":1}, {"did":"mop_route","siid":4,"piid":6}
+    {"did":"repeat_state","siid":4,"piid":1}, {"did":"mop_route","siid":4,"piid":6},
+    {"did":"current_map_id","siid":4,"piid":32}
 ]
 
 
