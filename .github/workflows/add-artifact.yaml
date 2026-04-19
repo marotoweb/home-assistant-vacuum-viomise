@@ -76,7 +76,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref_name }} # Use actal branch
+          ref: ${{ github.ref_name }} # Checkout the  actual branch to get the updated manifest from the first job
 
       # Create a .zip file of the integration's source code.
       - name: ZIP files
