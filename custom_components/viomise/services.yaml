@@ -1,20 +1,30 @@
 # Describes the custom services for the Viomi SE integration.
 
+# --- NEW NAMESPACE SERVICES ---
+
 vacuum_clean_segment:
   name: Clean Segment(s)
   description: "Cleans one or more specific rooms (segments) identified by the vacuum's map."
+  target:
+    entity:
+      integration: viomise
+      domain: vacuum
   fields:
     segments:
       name: Segments
-      description: "A list of room/segment IDs to clean."
+      description: "Room IDs (e.g., 10 or [10, 11])."
       required: true
-      example: "[16, 17]"
+      example: "[10, 11]"
       selector:
         object: {}
 
 vacuum_clean_zone:
   name: Clean Zone
   description: "Cleans a specified rectangular zone one or more times."
+  target:
+    entity:
+      integration: viomise
+      domain: vacuum
   fields:
     zone:
       name: Zone
@@ -37,6 +47,10 @@ vacuum_clean_zone:
 vacuum_goto:
   name: Go To Point
   description: "Commands the vacuum to go to a specific coordinate on the map."
+  target:
+    entity:
+      integration: viomise
+      domain: vacuum
   fields:
     x_coord:
       name: X-Coordinate
@@ -61,9 +75,13 @@ vacuum_goto:
           mode: box
           step: 100
 
-xiaomi_clean_point:
+vacuum_clean_point:
   name: Clean Around Point
   description: "Commands the vacuum to perform a spot cleaning around a specific coordinate."
+  target:
+    entity:
+      integration: viomise
+      domain: vacuum
   fields:
     point:
       name: Point
@@ -73,3 +91,73 @@ xiaomi_clean_point:
       selector:
         object: {}
 
+vacuum_set_map:
+  name: Set Active Map
+  description: "Switches the active map. Provide one of the following: Name, Index, or ID."
+  target:
+    entity:
+      integration: viomise
+      domain: vacuum
+  fields:
+    map_name:
+      name: Map Name
+      description: "The name of the map as defined in the Xiaomi Home app (e.g., 'Ground Floor')."
+      example: "Ground Floor"
+      selector:
+        text: {}
+    map_index:
+      name: Map Index
+      description: "The numerical index in the map list (0 for the first map, 1 for the second, etc.)."
+      example: 1
+      selector:
+        number:
+          min: 0
+          max: 10
+          mode: box
+    map_id:
+      name: Map ID
+      description: "The internal unique ID of the map (10-digit number)."
+      example: 1775989514
+      selector:
+        number:
+          min: 0
+          max: 4294967295
+          mode: box
+
+# --- LEGACY COMPATIBILITY SERVICES ---
+# These are kept so old automations and map cards still show documentation.
+
+xiaomi_clean_zone:
+  name: "[Legacy] Clean Zone"
+  description: "Legacy service name for zone cleaning. Please use vacuum_clean_zone instead."
+  target:
+    entity:
+      integration: viomise
+      domain: vacuum
+  fields:
+    zone:
+      name: Zone
+      required: true
+      selector:
+        object: {}
+    repeats:
+      name: Repeats
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 3
+
+xiaomi_clean_point:
+  name: "[Legacy] Clean Around Point"
+  description: "Legacy service name for spot cleaning. Please use vacuum_clean_point instead."
+  target:
+    entity:
+      integration: viomise
+      domain: vacuum
+  fields:
+    point:
+      name: Point
+      required: true
+      selector:
+        object: {}

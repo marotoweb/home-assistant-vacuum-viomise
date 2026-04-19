@@ -21,7 +21,7 @@ ALL_PROPS = [
     "s_time", "s_area", "suction_grade", "water_grade", "remember_map", "has_map",
     "is_mop", "has_newmap", "main_brush_percentage", "main_brush_left",
     "side_brush_percentage", "side_brush_left", "filter_percentage", "filter_left",
-    "mop_percentage", "mop_left", "repeat_state", "mop_route"
+    "mop_percentage", "mop_left", "repeat_state", "mop_route", "current_map_id"
 ]
 
 # This mapping is crucial for this specific vacuum model (viomi.vacuum.v19).
@@ -38,7 +38,8 @@ MAPPING = [
     {"did":"side_brush_percentage","siid":4,"piid":8}, {"did":"side_brush_left","siid":4,"piid":9},
     {"did":"filter_percentage","siid":4,"piid":12}, {"did":"filter_left","siid":4,"piid":13},
     {"did":"mop_percentage","siid":4,"piid":14}, {"did":"mop_left","siid":4,"piid":15},
-    {"did":"repeat_state","siid":4,"piid":1}, {"did":"mop_route","siid":4,"piid":6}
+    {"did":"repeat_state","siid":4,"piid":1}, {"did":"mop_route","siid":4,"piid":6},
+    {"did":"current_map_id","siid":4,"piid":32}
 ]
 
 
@@ -48,12 +49,35 @@ class ViomiSECoordinator(DataUpdateCoordinator[dict[str, any]]):
     def __init__(self, hass: HomeAssistant, vacuum: ViomiVacuum, scan_interval: int):
         """Initialize the data update coordinator."""
         self.vacuum = vacuum
+        # Dictionary to store hardware info (model, fw_ver, mac, etc.)
+        self.device_info_data = {}
+        
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
             update_interval=timedelta(seconds=scan_interval),
         )
+
+    async def async_fetch_device_info(self):
+        """
+        Fetch static device information (model, firmware, MAC) once.
+        This is called during integration setup to populate device_info.
+        """
+        try:
+            _LOGGER.debug("Viomise: Fetching static device information via miIO.info")
+            info = await self.hass.async_add_executor_job(
+                self.vacuum.raw_command, 'miIO.info', []
+            )
+            if info:
+                self.device_info_data = info
+                _LOGGER.info(
+                    "Viomise: Connected to %s (FW: %s)", 
+                    info.get("model"), 
+                    info.get("fw_ver")
+                )
+        except DeviceException as e:
+            _LOGGER.warning("Viomise: Failed to fetch static device info: %s", e)
 
     async def _async_update_data(self) -> dict[str, any]:
         """
@@ -84,4 +108,3 @@ class ViomiSECoordinator(DataUpdateCoordinator[dict[str, any]]):
         except DeviceException as e:
             # If communication fails, raise UpdateFailed to notify entities.
             raise UpdateFailed(f"Error communicating with Viomi SE device: {e}") from e
-

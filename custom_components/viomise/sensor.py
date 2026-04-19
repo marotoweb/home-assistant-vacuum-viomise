@@ -120,14 +120,21 @@ class ViomiSESensor(CoordinatorEntity[ViomiSECoordinator], SensorEntity):
         super().__init__(coordinator)
         self.entity_description = description
         
-        # Use config_entry.entry_id for unique_id if unique_id is not set
-        unique_id = config_entry.unique_id or config_entry.entry_id
-        self._attr_unique_id = f"{unique_id}_{description.key}"
+        # Use the unique_id set in the config flow (which already includes the _viomise suffix)
+        self._attr_unique_id = f"{config_entry.unique_id}_{description.key}"
+        
+        # Use dynamic device information from miIO.info stored in the coordinator.
+        info = coordinator.device_info_data
         
         # Link this sensor to the same device as the vacuum entity.
         self._attr_device_info = {
-            "identifiers": {(DOMAIN, unique_id)}
-        }
+                "identifiers": {(DOMAIN, config_entry.unique_id)},
+                "name": config_entry.title,
+                "manufacturer": "Viomi",
+                "model": info.get("model", "Viomi SE (V19)"),
+                "sw_version": info.get("fw_ver"),
+                "hw_version": info.get("hw_ver"),
+            }
 
     @property
     def native_value(self) -> int | None:

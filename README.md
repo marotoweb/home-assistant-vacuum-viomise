@@ -16,7 +16,9 @@
 
 [hacs_shield]: https://img.shields.io/static/v1.svg?label=HACS&message=Default&style=popout&color=green&labelColor=41bdf5&logo=HomeAssistantCommunityStore&logoColor=white
 
-# Hacky Home assistant support for Viomi SE (V-RVCLM21A)
+# Viomi SE (V-RVCLM21A) integration for Home Assistant
+
+[hacs_shield]: https://img.shields.io/static/v1.svg?label=HACS&message=Default&style=popout&color=green&labelColor=41bdf5&logo=HomeAssistantCommunityStore&logoColor=white
 
 [hacs]: https://github.com/hacs/integration
 
@@ -30,7 +32,6 @@
 
 [hacs_shield]: https://img.shields.io/static/v1.svg?label=HACS&message=Default&style=popout&color=green&labelColor=41bdf5&logo=HomeAssistantCommunityStore&logoColor=white
 
-# Viomi SE Vacuum Integration for Home Assistant (v2)
 
 This is a custom component for [Home Assistant](https://www.home-assistant.io/) to integrate the Viomi SE Vacuum Cleaner (`viomi.vacuum.v19`) - apparently EU version - with 4.0.9_0012 firmware and tested in 4.0.9_0017.
 
@@ -43,21 +44,26 @@ While optimized for the latest core, it remains compatible with **Home Assistant
 ---
 
 ## <a name="table-of-contents"></a>Table of Contents
-*   [What's New in v2?](#whats-new)
-*   [Upgrading from v1](#upgrading)
-*   [Features](#features)
-*   [Prerequisites](#prerequisites)
-*   [Installation](#installation)
-    *   [HACS (Recommended)](#hacs-installation)
-    *   [Manual Installation](#manual-installation)
-*   [Configuration](#configuration)
-*   [Options](#options)
-*   [Entities Provided](#entities)
-*   [Custom Services](#services)
-*   [Troubleshooting](#troubleshooting)
-*   [Acknowledgements](#acknowledgements)
-*   [Contributions](#contributions)
-*   [License](#license)
+- [Viomi SE (V-RVCLM21A) integration for Home Assistant](#viomi-se-v-rvclm21a-integration-for-home-assistant)
+  - [Table of Contents](#table-of-contents)
+  - [🎉 What's New in v2? (The Modernization Update)](#-whats-new-in-v2-the-modernization-update)
+  - [⬆️ Upgrading from v1](#️-upgrading-from-v1)
+  - [✨ Features](#-features)
+  - [📋 Prerequisites](#-prerequisites)
+  - [🚀 Installation](#-installation)
+    - [HACS (Recommended)](#hacs-recommended)
+    - [Manual Installation](#manual-installation)
+  - [⚙️ Configuration](#️-configuration)
+  - [🔧 Options](#-options)
+  - [ 📦 Entities \& Attributes](#--entities--attributes)
+    - [Main Entity: `vacuum.<device_name>`](#main-entity-vacuumdevice_name)
+    - [Dedicated Sensors](#dedicated-sensors)
+  - [🛠️ Custom Services](#️-custom-services)
+  - [🖼️ Lovelace Integration](#️-lovelace-integration)
+  - [❓ Troubleshooting](#-troubleshooting)
+  - [Acknowledgements](#acknowledgements)
+  - [🤝 Contributions](#-contributions)
+  - [📄 License](#-license)
 
 ---
 
@@ -172,16 +178,44 @@ After adding the integration, you can fine-tune its behavior.
 
 ---
 
-## <a name="entities"></a>📦 Entities Provided
+## <a name="entities"></a> 📦 Entities & Attributes
 
-The integration creates a vacuum entity and several sensor entities, all linked to a single device.
+### Main Entity: `vacuum.<device_name>`
+All properties fetched from the vacuum are available as **State Attributes**. This allows for advanced dashboard cards and automations without extra entities. 
+*(Note: If you named your device "Living Room", the entity will be `vacuum.living_room`)*.
 
-*   `vacuum.viomi_se`
-*   `sensor.viomi_se_battery`
-*   `sensor.viomi_se_main_brush_life`
-*   `sensor.viomi_se_side_brush_life`
-*   `sensor.viomi_se_filter_life`
-*   `sensor.viomi_se_mop_life`
+| Category | Attribute | Description |
+|----------|-----------|-------------|
+| **Mapping** | `current_map_id` | Unique ID of the active floor/map. |
+| | `remember_map` | Status of map saving (0: Off / 1: On). |
+| | `has_map` | Indicates if a map is currently loaded. |
+| | `has_newmap` | Indicates if a new map has been discovered. |
+| **Cleaning Stats** | `s_area` | Area cleaned in the last/current session (m²). |
+| | `s_time` | Duration of the last/current cleaning (min). |
+| **Modes & Config** | `run_state` | Numerical state of the vacuum (e.g., 4: Cleaning, 2: Charging). |
+| | `mode` | Operation mode (0: Vacuum, 1: Mixed, 2: Mop). |
+| | `mop_route` | Mopping pattern (0: S-shape, 1: Y-shape). |
+| | `suction_grade` | Suction power level (0-3). |
+| | `water_grade` | Water flow level (11: Low, 12: Medium, 13: High). |
+| | `repeat_state` | If the cleaning is set to repeat (0/1). |
+| **Hardware** | `battary_life` | Real-time battery percentage (0-100). |
+| | `box_type` | Container detected (1: Dust, 2: Water, 3: 2-in-1). |
+| | `mop_type` | Mop bracket status (0: Not installed, 1: Installed). |
+| | `err_state` | Current error code (0 if no error). |
+| **Maintenance** | `main_brush_left` | Hours remaining for the main brush. |
+| | `side_brush_left` | Hours remaining for the side brush. |
+| | `filter_left` | Hours remaining for the filter. |
+| | `mop_left` | Hours remaining for the mop. |
+| | `*_percentage` | Percentage remaining for each consumable above. |
+
+
+### Dedicated Sensors
+For easier history tracking and native Home Assistant features:
+* `sensor.viomi_se_battery` (Battery percentage)
+* `sensor.viomi_se_main_brush_life` (%)
+* `sensor.viomi_se_side_brush_life` (%)
+* `sensor.viomi_se_filter_life` (%)
+* `sensor.viomi_se_mop_life` (%)
 
 *Note: The exact entity ID may vary slightly based on the name you provide during setup. Naming the vacuum 'Robot' will result in the entity ID `sensor.robot_battery`*
 
@@ -189,14 +223,14 @@ The integration creates a vacuum entity and several sensor entities, all linked 
 
 ## <a name="services"></a>🛠️ Custom Services
 
-In addition to the standard vacuum services, this integration provides custom services for advanced cleaning modes. You can call these from scripts or automations.
+In addition to the standard vacuum services, this integration provides advanced services. You can find them in **Developer Tools > Services**.
 
-| Service                       | Description                               | Parameters                                     |
-| ----------------------------- | ----------------------------------------- | ---------------------------------------------- |
-| `vacuum.vacuum_clean_segment` | Cleans one or more specific rooms/segments. | `segments`: A list of room IDs (e.g., `[16, 17]`). |
-| `vacuum.vacuum_clean_zone`    | Cleans a rectangular zone.                | `zone`: `[[x1, y1, x2, y2]]`, `repeats`: `1-3`.    |
-| `vacuum.vacuum_goto`          | Sends the vacuum to a specific coordinate.  | `x_coord`: X coordinate, `y_coord`: Y coordinate.  |
-| `vacuum.xiaomi_clean_point`   | Cleans around a specific point.           | `point`: `[x, y]`.                             |
+| Service | Parameter | Example |
+|---------|-----------|---------|
+| `viomise.vacuum_clean_zone` | `zone` (coords), `repeats` | Clean a specific area. |
+| `viomise.vacuum_clean_segment`| `segments` (list) | Clean specific rooms. |
+| `viomise.vacuum_goto` | `x_coord`, `y_coord` | Send robot to a spot. |
+| `viomise.vacuum_set_map` | `map_id`, `map_name` or `map_index` | Switch between floors. |         | `point`: `[x, y]`.                             |
 
 **Example Service Call (in YAML):**
 ```yaml
@@ -204,8 +238,201 @@ service: vacuum.vacuum_clean_segment
 target:
   entity_id: vacuum.viomi_se
 data:
-  segments: [16, 17]
+  segments: [10, 11]
 ```
+
+## 🖼️ Lovelace Integration
+
+For the best experience, we recommend using the [Xiaomi Vacuum Map Card](https://github.com/PiotrMachowski/lovelace-xiaomi-vacuum-map-card). This integration is compatible with its features.
+
+<details>
+<summary><b>Click to expand: Full Map Card YAML Example</b></summary>
+
+```yaml
+type: grid
+square: false
+columns: 1
+cards:
+  - type: heading
+    heading: Viomi SE
+    icon: mdi:robot-vacuum
+    heading_style: title
+
+  - type: custom:xiaomi-vacuum-map-card
+    entity: vacuum.viomi_se
+    vacuum_platform: marotoweb/viomise
+    map_source:
+      camera: image.viomi_se_live_map
+    calibration_source:
+      camera: true
+    
+    # Dashboard Tiles: Displaying real-time stats and consumable status
+    tiles:
+      - tile_id: status
+        entity: vacuum.viomi_se # Uses the main entity state (Cleaning, Docked, etc.)
+        label: Status
+      - tile_id: battery
+        entity: sensor.viomi_se_battery
+        label: Battery
+      - tile_id: area
+        entity: vacuum.viomi_se
+        label: Area
+        attribute: s_area
+        unit: m²
+        icon: mdi:texture-box
+      - tile_id: time
+        entity: vacuum.viomi_se
+        label: Time
+        attribute: s_time
+        unit: min
+        icon: mdi:clock-time-five-outline
+      - tile_id: main_brush
+        entity: vacuum.viomi_se
+        label: Main Brush
+        attribute: main_brush_left
+        unit: h
+        icon: mdi:brush-variant
+      - tile_id: side_brush
+        entity: vacuum.viomi_se
+        label: Side Brush
+        attribute: side_brush_left
+        unit: h
+        icon: mdi:brush
+      - tile_id: filter
+        entity: vacuum.viomi_se
+        label: Filter
+        attribute: filter_left
+        unit: h
+        icon: mdi:air-filter
+      - tile_id: mop_life
+        entity: vacuum.viomi_se
+        label: Mop
+        attribute: mop_left
+        unit: h
+        icon: mdi:format-color-fill
+
+    append_icons: true
+    icons:
+      # --- MAP SELECTION ---
+      # Icons will highlight (glow) when the 'current_map_id' attribute matches the value
+      - icon_id: map_1
+        icon: mdi:layers-outline
+        label: First Floor
+        menu_id: map_selection
+        conditions:
+          - entity: vacuum.viomi_se
+            attribute: current_map_id
+            value: 1776530025
+        tap_action:
+          action: call-service
+          service: viomise.vacuum_set_map
+          service_data:
+            entity_id: vacuum.viomi_se
+            map_id: 1776530025
+
+      - icon_id: map_2
+        icon: mdi:layers-triple-outline
+        label: Ground Floor
+        menu_id: map_selection
+        conditions:
+          - entity: vacuum.viomi_se
+            attribute: current_map_id
+            value: 1776189566
+        tap_action:
+          action: call-service
+          service: viomise.vacuum_set_map
+          service_data:
+            entity_id: vacuum.viomi_se
+            map_id: 1776189566
+
+      # --- CLEANING MODES ---
+      - icon_id: mode_vacuum
+        icon: mdi:vacuum
+        label: Vacuum Only
+        menu_id: cleaning_mode
+        tap_action:
+          action: call-service
+          service: vacuum.send_command
+          service_data:
+            entity_id: vacuum.viomi_se
+            command: set_mop
+            params: [0]
+
+      - icon_id: mode_mixed
+        icon: mdi:hydro-power
+        label: Vacuum & Mop
+        menu_id: cleaning_mode
+        tap_action:
+          action: call-service
+          service: vacuum.send_command
+          service_data:
+            entity_id: vacuum.viomi_se
+            command: set_mop
+            params: [1]
+
+      # --- WATER LEVELS ---
+      - icon_id: water_low
+        icon: mdi:water-minus-outline
+        label: Low
+        menu_id: water_level
+        tap_action:
+          action: call-service
+          service: vacuum.send_command
+          service_data:
+            entity_id: vacuum.viomi_se
+            command: set_suction
+            params: [11]
+
+      # --- MOPPING PATTERNS ---
+      - icon_id: pattern_y
+        icon: mdi:alpha-y-circle
+        label: Y-shape
+        menu_id: mop_pattern
+        tap_action:
+          action: call-service
+          service: vacuum.send_command
+          service_data:
+            entity_id: vacuum.viomi_se
+            command: set_moproute
+            params: [1]
+
+      - icon_id: pattern_s
+        icon: mdi:alpha-s-circle
+        label: S-shape
+        menu_id: mop_pattern
+        tap_action:
+          action: call-service
+          service: vacuum.send_command
+          service_data:
+            entity_id: vacuum.viomi_se
+            command: set_moproute
+            params: [0]
+
+    # Map Interaction Modes (Selection Tools)
+    map_modes:
+      - name: Area Cleaning
+        icon: mdi:select-drag
+        selection_type: MANUAL_RECTANGLE
+        max_selections: 5
+        repeats_type: EXTERNAL
+        max_repeats: 3
+        service_call_schema:
+          service: viomise.vacuum_clean_zone
+          service_data:
+            zone: "[[selection]]"
+            repeats: "[[repeats]]"
+            entity_id: vacuum.viomi_se
+      - name: Point Cleaning
+        icon: mdi:map-marker-plus
+        selection_type: MANUAL_POINT
+        service_call_schema:
+          service: viomise.vacuum_clean_point
+          service_data:
+            point: "[[selection]]"
+            entity_id: vacuum.viomi_se
+
+```
+</details>
 
 ## <a name="troubleshooting"></a>❓ Troubleshooting
 

@@ -2,7 +2,6 @@
 """Vacuum platform for the Viomi SE integration."""
 from __future__ import annotations
 
-
 import asyncio
 import logging
 import time
@@ -22,7 +21,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ENTITY_ID
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import config_validation as cv, entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -66,7 +65,13 @@ STATE_CODE_TO_ACTIVITY = {
 SERVICE_CLEAN_ZONE = "xiaomi_clean_zone"
 SERVICE_GOTO = "vacuum_goto"
 SERVICE_CLEAN_SEGMENT = "vacuum_clean_segment"
-SERVICE_CLEAN_POINT = "xiaomi_clean_point"
+SERVICE_CLEAN_POINT = "vacuum_clean_point"
+# New service for map management
+SERVICE_SET_MAP = "vacuum_set_map"
+
+# Legacy names for backward compatibility with lovelace-xiaomi-vacuum-map-card
+LEGACY_CLEAN_ZONE = "xiaomi_clean_zone"
+LEGACY_CLEAN_POINT = "xiaomi_clean_point"
 
 ATTR_ZONE_ARRAY = "zone"
 ATTR_ZONE_REPEATER = "repeats"
@@ -74,21 +79,44 @@ ATTR_X_COORD = "x_coord"
 ATTR_Y_COORD = "y_coord"
 ATTR_SEGMENTS = "segments"
 ATTR_POINT = "point"
+ATTR_MAP_ID = "map_id"
+ATTR_MAP_NAME = "map_name"
+ATTR_MAP_INDEX = "map_index"
 
 # Schemas for the service calls.
-SERVICE_SCHEMA_CLEAN_ZONE = vol.Schema({vol.Required(ATTR_ZONE_ARRAY): vol.All(list, [vol.ExactSequence([vol.Coerce(float), vol.Coerce(float), vol.Coerce(float), vol.Coerce(float)])]), vol.Required(ATTR_ZONE_REPEATER): vol.All(vol.Coerce(int), vol.Clamp(min=1, max=3))}, extra=vol.ALLOW_EXTRA)
-SERVICE_SCHEMA_GOTO = vol.Schema({vol.Required(ATTR_X_COORD): vol.Coerce(float), vol.Required(ATTR_Y_COORD): vol.Coerce(float)}, extra=vol.ALLOW_EXTRA)
-SERVICE_SCHEMA_CLEAN_SEGMENT = vol.Schema({vol.Required(ATTR_SEGMENTS): vol.Any(vol.Coerce(int), [vol.Coerce(int)])}, extra=vol.ALLOW_EXTRA)
-SERVICE_SCHEMA_CLEAN_POINT = vol.Schema({vol.Required(ATTR_POINT): vol.All(vol.ExactSequence([vol.Coerce(float), vol.Coerce(float)]))}, extra=vol.ALLOW_EXTRA)
+SERVICE_SCHEMA_CLEAN_ZONE = {
+    vol.Required(ATTR_ZONE_ARRAY): vol.All(list, [vol.ExactSequence([vol.Coerce(float), vol.Coerce(float), vol.Coerce(float), vol.Coerce(float)])]), 
+    vol.Optional(ATTR_ZONE_REPEATER, default=1): vol.All(vol.Coerce(int), vol.Clamp(min=1, max=3))
+}
+SERVICE_SCHEMA_GOTO = {
+    vol.Required(ATTR_X_COORD): vol.Coerce(float), 
+    vol.Required(ATTR_Y_COORD): vol.Coerce(float)
+}
+SERVICE_SCHEMA_CLEAN_SEGMENT = {
+    vol.Required(ATTR_SEGMENTS): vol.Any(vol.Coerce(int), [vol.Coerce(int)])
+}
+SERVICE_SCHEMA_CLEAN_POINT = {
+    vol.Required(ATTR_POINT): vol.All(vol.ExactSequence([vol.Coerce(float), vol.Coerce(float)]))
+}
+
+# Flexible schema: accepts any of the three, but ensures they are the correct type
+SERVICE_SCHEMA_SET_MAP = {
+    vol.Optional(ATTR_MAP_ID): vol.Coerce(int),
+    vol.Optional(ATTR_MAP_NAME): cv.string,
+    vol.Optional(ATTR_MAP_INDEX): vol.Coerce(int),
+}
 
 # Mapping from service names to the corresponding method.
+# Includes both new and legacy names pointing to the same functions.
 SERVICE_TO_METHOD = {
     SERVICE_CLEAN_ZONE: {"method": "async_clean_zone", "schema": SERVICE_SCHEMA_CLEAN_ZONE},
+    LEGACY_CLEAN_ZONE: {"method": "async_clean_zone", "schema": SERVICE_SCHEMA_CLEAN_ZONE},
     SERVICE_GOTO: {"method": "async_goto", "schema": SERVICE_SCHEMA_GOTO},
     SERVICE_CLEAN_SEGMENT: {"method": "async_clean_segment", "schema": SERVICE_SCHEMA_CLEAN_SEGMENT},
     SERVICE_CLEAN_POINT: {"method": "async_clean_point", "schema": SERVICE_SCHEMA_CLEAN_POINT},
+    LEGACY_CLEAN_POINT: {"method": "async_clean_point", "schema": SERVICE_SCHEMA_CLEAN_POINT},
+    SERVICE_SET_MAP: {"method": "async_set_map", "schema": SERVICE_SCHEMA_SET_MAP},
 }
-
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     """Set up the Viomi SE vacuum platform from a config entry."""
@@ -101,34 +129,16 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     vacuum_entity = MiroboVacuum2(coordinator, config_entry)
     async_add_entities([vacuum_entity])
 
-    # This service handler logic is faithful to your original implementation.
-    async def async_service_handler(service: ServiceCall) -> None:
-        """Map services to methods on MiroboVacuum2."""
-        method = SERVICE_TO_METHOD.get(service.service)
-        if not method:
-            _LOGGER.error("Service %s was called but is not registered", service.service)
-            return
+    # Register custom services for this platform
+    # Using entity_platform allows the services to show up in Developer Tools with help text from services.yaml
+    platform = entity_platform.async_get_current_platform()
 
-        params = {key: value for key, value in service.data.items() if key != ATTR_ENTITY_ID}
-        entity_ids = service.data.get(ATTR_ENTITY_ID)
-        
-        target_vacuums = [v.get('entity') for v in coordinator.hass.data[DOMAIN].values() if isinstance(v, dict) and v.get('entity') and v['entity'].entity_id in entity_ids] if entity_ids else [v.get('entity') for v in coordinator.hass.data[DOMAIN].values() if isinstance(v, dict) and v.get('entity')]
-
-        update_tasks = []
-        for vacuum in target_vacuums:
-            if vacuum:
-                await getattr(vacuum, method["method"])(**params)
-                update_tasks.append(vacuum.async_update_ha_state(True))
-
-        if update_tasks:
-            await asyncio.gather(*update_tasks)
-
-    # This service registration logic is faithful to your original implementation.
     for service_name, service_info in SERVICE_TO_METHOD.items():
-        hass.services.async_register(
-            VACUUM_DOMAIN, service_name, async_service_handler, schema=service_info["schema"]
+        platform.async_register_entity_service(
+            service_name, 
+            service_info["schema"], 
+            service_info["method"]
         )
-
 
 class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
     """Representation of a Viomi SE Robot Vacuum."""
@@ -143,12 +153,17 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
         self._attr_unique_id = config_entry.unique_id
         self._last_command_time: float = 0
         self._last_clean_point: list[float] | None = None
-        self._attr_device_info = {"identifiers": {(DOMAIN, self.unique_id)}}
-        # Store the entity in hass.data for the service handler to find it.
-        hass = coordinator.hass
-        if DOMAIN not in hass.data: hass.data[DOMAIN] = {}
-        if config_entry.entry_id not in hass.data[DOMAIN]: hass.data[DOMAIN][config_entry.entry_id] = {}
-        hass.data[DOMAIN][config_entry.entry_id]['entity'] = self
+        
+        # Use dynamic device information from miIO.info
+        info = coordinator.device_info_data
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, config_entry.unique_id)},
+            "name": config_entry.title,
+            "manufacturer": "Viomi",
+            "model": info.get("model", "Viomi SE (V19)"),
+            "sw_version": info.get("fw_ver"),
+            "hw_version": info.get("hw_ver"),
+        }
 
     @property
     def supported_features(self) -> VacuumEntityFeature:
@@ -288,6 +303,7 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
 
     async def async_clean_zone(self, zone: list, repeats: int = 1):
         """Clean selected area(s) for the number of repeats indicated."""
+
         result = []
         i = 0
         for z in zone:
@@ -296,11 +312,12 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
                 res = '_'.join(str(x) for x in [i, 0, x1, y1, x1, y2, x2, y2, x2, y1])
                 result.append(res)
                 i += 1
+             
         result = [i] + result
+        
         if await self._try_command("clean_zone (uploadmap)", "Unable to set uploadmap for zone cleaning", self._vacuum.raw_command, 'set_uploadmap', [1], delay=True):
             if await self._try_command("clean_zone (set_zone)", "Unable to send zone cleaning command", self._vacuum.raw_command, 'set_zone', result, skip_cooldown=True):
                 await self._try_command("clean_zone (set_mode)", "Unable to start zone cleaning mode", self._vacuum.raw_command, 'set_mode', [3, 1], skip_cooldown=True)
-
 
     async def async_goto(self, x_coord: float, y_coord: float):
         """Go to a specific coordinate."""
@@ -320,3 +337,70 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
         self._last_clean_point = point
         if await self._try_command("clean_point (uploadmap)", "Unable to set uploadmap for point cleaning", self._vacuum.raw_command, 'set_uploadmap', [0], delay=True):
             await self._try_command("clean_point (set_pointclean)", "Unable to clean point", self._vacuum.raw_command, 'set_pointclean', [1, point[0], point[1]], skip_cooldown=True)
+    
+    async def async_set_map(
+            self, 
+            map_id: int | None = None, 
+            map_name: str | None = None, 
+            map_index: int | None = None
+        ) -> None:
+            """
+            Switch the active map using ID, Name, or Index.
+            
+            This method resolves the target Map ID by fetching the current map list 
+            directly from the device if only a Name or Index is provided.
+            """
+            import json # Import locally to ensure availability in exception blocks
+            target_id = map_id
+
+            # If ID is not directly provided, we must resolve it from Name or Index
+            if target_id is None:
+                _LOGGER.debug(
+                    "Resolving map ID for Viomi SE. Criteria: Name='%s', Index=%s", 
+                    map_name, map_index
+                )
+                try:
+                    # Fetch the current map list from the device
+                    response = await self.hass.async_add_executor_job(
+                        self._vacuum.raw_command, "get_map", []
+                    )
+                    
+                    # Extract and parse the nested JSON string from the response
+                    # Format: response['out'][0]['value'] -> '[{"name": "...", "id": ...}]'
+                    map_data_str = response.get('out', [{}])[0].get('value', '[]')
+                    maps = json.loads(map_data_str)
+
+                    if map_name:
+                        # Case-insensitive search for the map name
+                        target_id = next(
+                            (m['id'] for m in maps if m['name'].lower() == map_name.lower()), 
+                            None
+                        )
+                    elif map_index is not None:
+                        # Selection by position in the list (0, 1, 2...)
+                        if 0 <= map_index < len(maps):
+                            target_id = maps[map_index]['id']
+
+                except (KeyError, IndexError, json.JSONDecodeError, TypeError) as err:
+                    _LOGGER.error("Failed to parse map list from Viomi SE: %s", err)
+                    return
+                except Exception as err:
+                    _LOGGER.error("Unexpected error during map resolution: %s", err)
+                    return
+
+            # Execute the switch command if an ID was successfully resolved
+            if target_id is not None:
+                _LOGGER.info("Switching Viomi SE to Map ID: %s", target_id)
+                # The 'set_map' command expects the ID inside a list [ID]
+                await self._try_command(
+                    "set_map", 
+                    "Failed to switch map: %s", 
+                    self._vacuum.raw_command, 
+                    'set_map', 
+                    [target_id]
+                )
+            else:
+                _LOGGER.error(
+                    "Could not resolve map. Criteria: Name=%s, Index=%s, ID=%s", 
+                    map_name, map_index, map_id
+                )
