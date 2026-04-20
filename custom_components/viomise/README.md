@@ -233,12 +233,25 @@ In addition to the standard vacuum services, this integration provides advanced 
 
 **Example Service Call (in YAML):**
 ```yaml
-service: vacuum.vacuum_clean_segment
+service: viomise.vacuum_clean_segment
 target:
   entity_id: vacuum.viomi_se
 data:
   segments: [10, 11]
 ```
+
+## ⚠️ Backward Compatibility (v2.x)
+
+Starting with version **v2026.4.20**, this integration supports both the new modern service names and legacy names to ensure your existing dashboards don't break.
+
+| Service Name (New) | Legacy Alias (Backward Compatibility) | Description |
+|--------------------|---------------------------------------|-------------|
+| `viomise.vacuum_clean_zone` | `vacuum.xiaomi_clean_zone` | Required for `xiaomi-vacuum-map-card` default config. |
+| `viomise.vacuum_clean_point`| `vacuum.xiaomi_clean_point`| Required for "Go to point" default config. |
+
+**Note:** While legacy aliases are supported to keep community Lovelace cards working out-of-the-box, we recommend migrating your custom scripts and automations to the `viomise.*` domain for better long-term support and visibility in Home Assistant Developer Tools.
+
+---
 
 ## 🖼️ Lovelace Integration
 
@@ -406,29 +419,6 @@ cards:
             entity_id: vacuum.viomi_se
             command: set_moproute
             params: [0]
-
-    # Map Interaction Modes (Selection Tools)
-    map_modes:
-      - name: Area Cleaning
-        icon: mdi:select-drag
-        selection_type: MANUAL_RECTANGLE
-        max_selections: 5
-        repeats_type: EXTERNAL
-        max_repeats: 3
-        service_call_schema:
-          service: viomise.vacuum_clean_zone
-          service_data:
-            zone: "[[selection]]"
-            repeats: "[[repeats]]"
-            entity_id: vacuum.viomi_se
-      - name: Point Cleaning
-        icon: mdi:map-marker-plus
-        selection_type: MANUAL_POINT
-        service_call_schema:
-          service: viomise.vacuum_clean_point
-          service_data:
-            point: "[[selection]]"
-            entity_id: vacuum.viomi_se
 
 ```
 </details>
