@@ -62,14 +62,14 @@ STATE_CODE_TO_ACTIVITY = {
 }
 
 # Service definitions for advanced cleaning modes.
-SERVICE_CLEAN_ZONE = "xiaomi_clean_zone"
+SERVICE_CLEAN_ZONE = "vacuum_clean_zone"
 SERVICE_GOTO = "vacuum_goto"
 SERVICE_CLEAN_SEGMENT = "vacuum_clean_segment"
 SERVICE_CLEAN_POINT = "vacuum_clean_point"
 # New service for map management
 SERVICE_SET_MAP = "vacuum_set_map"
 
-# Legacy names for backward compatibility with lovelace-xiaomi-vacuum-map-card
+# Legacy names for backward compatibility (v1 and lovelace-xiaomi-vacuum-map-card)
 LEGACY_CLEAN_ZONE = "xiaomi_clean_zone"
 LEGACY_CLEAN_POINT = "xiaomi_clean_point"
 
@@ -106,18 +106,6 @@ SERVICE_SCHEMA_SET_MAP = {
     vol.Optional(ATTR_MAP_INDEX): vol.Coerce(int),
 }
 
-# Mapping from service names to the corresponding method.
-# Includes both new and legacy names pointing to the same functions.
-SERVICE_TO_METHOD = {
-    SERVICE_CLEAN_ZONE: {"method": "async_clean_zone", "schema": SERVICE_SCHEMA_CLEAN_ZONE},
-    LEGACY_CLEAN_ZONE: {"method": "async_clean_zone", "schema": SERVICE_SCHEMA_CLEAN_ZONE},
-    SERVICE_GOTO: {"method": "async_goto", "schema": SERVICE_SCHEMA_GOTO},
-    SERVICE_CLEAN_SEGMENT: {"method": "async_clean_segment", "schema": SERVICE_SCHEMA_CLEAN_SEGMENT},
-    SERVICE_CLEAN_POINT: {"method": "async_clean_point", "schema": SERVICE_SCHEMA_CLEAN_POINT},
-    LEGACY_CLEAN_POINT: {"method": "async_clean_point", "schema": SERVICE_SCHEMA_CLEAN_POINT},
-    SERVICE_SET_MAP: {"method": "async_set_map", "schema": SERVICE_SCHEMA_SET_MAP},
-}
-
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     """Set up the Viomi SE vacuum platform from a config entry."""
     try:
@@ -129,15 +117,56 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     vacuum_entity = MiroboVacuum2(coordinator, config_entry)
     async_add_entities([vacuum_entity])
 
-    # Register custom services for this platform
-    # Using entity_platform allows the services to show up in Developer Tools with help text from services.yaml
+    # Register modern services under 'viomise' domain
     platform = entity_platform.async_get_current_platform()
+    
+    modern_services = {
+        SERVICE_CLEAN_ZONE: "async_clean_zone",
+        SERVICE_GOTO: "async_goto",
+        SERVICE_CLEAN_SEGMENT: "async_clean_segment",
+        SERVICE_CLEAN_POINT: "async_clean_point",
+        SERVICE_SET_MAP: "async_set_map",
+    }
+    
+    # We use explicit schemas for the registration
+    schemas = {
+        SERVICE_CLEAN_ZONE: SERVICE_SCHEMA_CLEAN_ZONE,
+        SERVICE_GOTO: SERVICE_SCHEMA_GOTO,
+        SERVICE_CLEAN_SEGMENT: SERVICE_SCHEMA_CLEAN_SEGMENT,
+        SERVICE_CLEAN_POINT: SERVICE_SCHEMA_CLEAN_POINT,
+        SERVICE_SET_MAP: SERVICE_SCHEMA_SET_MAP,
+    }
 
-    for service_name, service_info in SERVICE_TO_METHOD.items():
+    for service_name, method_name in modern_services.items():
         platform.async_register_entity_service(
             service_name, 
-            service_info["schema"], 
-            service_info["method"]
+            schemas[service_name], 
+            method_name
+        )
+
+    # Register Legacy Aliases under 'vacuum' domain (Backward Compatibility)
+    async def handle_legacy_service(call: ServiceCall):
+        """Redirect calls from vacuum domain to the viomise entity."""
+        service = call.service
+        data = {k: v for k, v in call.data.items() if k != ATTR_ENTITY_ID}
+        
+        if service == LEGACY_CLEAN_ZONE:
+            await vacuum_entity.async_clean_zone(**data)
+        elif service == LEGACY_CLEAN_POINT:
+            await vacuum_entity.async_clean_point(**data)
+
+    # Registration in the global vacuum domain
+    legacy_services = {
+        LEGACY_CLEAN_ZONE: SERVICE_SCHEMA_CLEAN_ZONE,
+        LEGACY_CLEAN_POINT: SERVICE_SCHEMA_CLEAN_POINT,
+    }
+
+    for legacy_name, schema in legacy_services.items():
+        hass.services.async_register(
+            VACUUM_DOMAIN,
+            legacy_name,
+            handle_legacy_service,
+            schema=vol.Schema(schema).extend({vol.Optional(ATTR_ENTITY_ID): cv.comp_entity_ids})
         )
 
 class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
