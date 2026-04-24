@@ -362,6 +362,10 @@ cards:
         icon: mdi:vacuum
         label: Vacuum Only
         menu_id: cleaning_mode
+        conditions:
+          - entity: vacuum.viomi_se
+            attribute: is_mop
+            value: "0"
         tap_action:
           action: call-service
           service: vacuum.send_command
@@ -374,6 +378,10 @@ cards:
         icon: mdi:hydro-power
         label: Vacuum & Mop
         menu_id: cleaning_mode
+        conditions:
+          - entity: vacuum.viomi_se
+            attribute: is_mop
+            value: "1"
         tap_action:
           action: call-service
           service: vacuum.send_command
@@ -382,11 +390,31 @@ cards:
             command: set_mop
             params: [1]
 
+      - icon_id: mode_mop
+        icon: mdi:waves
+        label: Mop Only
+        menu_id: cleaning_mode
+        conditions:
+          - entity: vacuum.viomi_se
+            attribute: is_mop
+            value: "2"
+        tap_action:
+          action: call-service
+          service: vacuum.send_command
+          service_data:
+            entity_id: vacuum.viomi_se
+            command: set_mop
+            params: [2]
+
       # --- WATER LEVELS ---
       - icon_id: water_low
         icon: mdi:water-minus-outline
         label: Low
         menu_id: water_level
+        conditions:
+          - entity: vacuum.viomi_se
+            attribute: water_grade
+            value: "0"
         tap_action:
           action: call-service
           service: vacuum.send_command
@@ -395,11 +423,47 @@ cards:
             command: set_suction
             params: [11]
 
+      - icon_id: water_medium
+        icon: mdi:water
+        label: Medium
+        menu_id: water_level
+        conditions:
+          - entity: vacuum.viomi_se
+            attribute: water_grade
+            value: "1"
+        tap_action:
+          action: call-service
+          service: vacuum.send_command
+          service_data:
+            entity_id: vacuum.viomi_se
+            command: set_suction
+            params: [12]
+
+      - icon_id: water_high
+        icon: mdi:water-plus
+        label: High
+        menu_id: water_level
+        conditions:
+          - entity: vacuum.viomi_se
+            attribute: water_grade
+            value: "2"
+        tap_action:
+          action: call-service
+          service: vacuum.send_command
+          service_data:
+            entity_id: vacuum.viomi_se
+            command: set_suction
+            params: [13]
+
       # --- MOPPING PATTERNS ---
       - icon_id: pattern_y
         icon: mdi:alpha-y-circle
         label: Y-shape
         menu_id: mop_pattern
+        conditions:
+          - entity: vacuum.viomi_se
+            attribute: mop_route
+            value: "1"
         tap_action:
           action: call-service
           service: vacuum.send_command
@@ -412,6 +476,10 @@ cards:
         icon: mdi:alpha-s-circle
         label: S-shape
         menu_id: mop_pattern
+        conditions:
+          - entity: vacuum.viomi_se
+            attribute: mop_route
+            value: "0"
         tap_action:
           action: call-service
           service: vacuum.send_command
