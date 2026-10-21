@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import time
 from functools import partial
@@ -323,11 +324,23 @@ class MiroboVacuum2(CoordinatorEntity[ViomiSECoordinator], StateVacuumEntity):
     async def async_send_command(self, command: str, params: dict[str, Any] | list[Any] | None = None, **kwargs: Any) -> None:
         """Send a raw command to the vacuum."""
         if isinstance(params, list) and len(params) == 1 and isinstance(params[0], str):
-            if params[0].find('[') > -1 and params[0].find(']') > -1:
-                try: params = eval(params[0])
-                except Exception: _LOGGER.warning("Invalid eval for params: %s", params)
-            elif params[0].isnumeric():
-                params[0] = int(params[0])
+            raw = params[0].strip()
+            if raw.startswith("[") and raw.endswith("]"):
+                # Parse the string as JSON Only lists of scalars are accepted.
+                try:
+                    parsed = json.loads(raw)
+                    if not isinstance(parsed, list):
+                        raise ValueError("Parsed value is not a list")
+                    # Ensure every element is a scalar (str, int, float, bool or None)
+                    for item in parsed:
+                        if not isinstance(item, (str, int, float, bool, type(None))):
+                            raise ValueError("List contains non-scalar element")
+                    params = parsed
+                except (json.JSONDecodeError, ValueError, TypeError) as exc:
+                    _LOGGER.warning("Invalid params JSON for send_command: %s", exc)
+                    return
+            elif raw.isnumeric():
+                params[0] = int(raw)
         await self._try_command("send_command", "Unable to send command to the vacuum: %s", self._vacuum.raw_command, command, params)
 
     async def async_clean_zone(self, zone: list, repeats: int = 1):
